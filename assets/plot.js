@@ -1,4 +1,5 @@
-import { cmToPixels, pngWithDpi, zoomWindow } from "./plot-utils.js";
+import { cmToPixels, pngWithDpi, zoomWindow, panWindow } from "./plot-utils.js";
+import { findIntersections } from "./graph-analysis.js";
 import { piLabel } from "./function-math.js";
 export const xml = (s) =>
   String(s).replace(
@@ -24,14 +25,19 @@ export function graphGeometry(o) {
   const w = o.width || 900,
     h = o.height || 530,
     font = o.professional ? 14.6667 : 15,
-    left = o.professional ? 44 : 52,
+    left = o.professional
+      ? Math.max(
+          44,
+          Math.min(w * 0.4, (o.ylabel || "").length * font * 0.52 + 16),
+        )
+      : 52,
     right = o.professional ? 25 : 28,
     legendCount = o.legend
       ? o.curves.filter((c) => c.showEquation !== false).length
       : 0,
     legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20,
     top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28,
-    bottom = o.professional ? 34 : 38,
+    bottom = o.professional ? 54 : 38,
     W = w - left - right,
     H = h - top - bottom,
     X = (x) => left + ((x - o.xmin) / (o.xmax - o.xmin)) * W,
@@ -153,7 +159,8 @@ export function buildGraph(o) {
     xAxis = Math.max(top, Math.min(h - bottom, Y(0))),
     yAxis = Math.max(left, Math.min(w - right, X(0)));
   let xstep;
-  if (o.radians) {
+  if (Number.isFinite(o.xstep) && o.xstep > 0) xstep = o.xstep;
+  else if (o.radians) {
     let steps = [
       Math.PI / 24,
       Math.PI / 12,
@@ -176,7 +183,10 @@ export function buildGraph(o) {
     xstep =
       steps.find((s) => s >= (o.xmax - o.xmin) / (W / 78)) || 4096 * Math.PI;
   } else xstep = niceStep(o.xmax - o.xmin, Math.max(3, W / 75));
-  const ystep = niceStep(o.ymax - o.ymin, Math.max(3, H / 58)),
+  const ystep =
+      Number.isFinite(o.ystep) && o.ystep > 0
+        ? o.ystep
+        : niceStep(o.ymax - o.ymin, Math.max(3, H / 58)),
     id = "graph-clip";
   let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
   if (o.legend)
@@ -185,36 +195,46 @@ export function buildGraph(o) {
       .forEach((c, i) => {
         html += `<line x1="${left}" x2="${left + 23}" y1="${19 + i * g.legendStep}" y2="${19 + i * g.legendStep}" stroke="${c.color}" stroke-width="1.6"/><text x="${left + 33}" y="${24 + i * g.legendStep}" font-size="${Math.min(font, g.legendStep - 2)}">${xml(c.label)}</text>`;
       });
+  const xstride = Math.max(1, Math.ceil((o.xmax - o.xmin) / xstep / 200)),
+    ystride = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / 200));
+  const xlabels = Math.max(
+      xstride,
+      Math.ceil((o.xmax - o.xmin) / xstep / (W / 35)),
+    ),
+    ylabels = Math.max(
+      ystride,
+      Math.ceil((o.ymax - o.ymin) / ystep / (H / 25)),
+    );
   for (
-    let i = Math.ceil(o.xmin / xstep);
-    i <= Math.floor(o.xmax / xstep) && i - Math.ceil(o.xmin / xstep) < 80;
-    i++
+    let i = Math.ceil(o.xmin / xstep / xstride) * xstride;
+    i <= Math.floor(o.xmax / xstep);
+    i += xstride
   ) {
     const x = i * xstep,
       u = X(x);
     if (o.grid)
       html += `<path d="M${u} ${top}V${h - bottom}" stroke="${grid}" stroke-width=".8"/>`;
     html += `<path d="M${u} ${xAxis - 4}v8" stroke="${ink}"/>`;
-    if (Math.abs(x) > xstep * 1e-6)
+    if (Math.abs(x) > xstep * 1e-6 && i % xlabels === 0)
       html += `<text x="${u}" y="${xAxis + font + 7 > h - 8 ? xAxis - 9 : xAxis + font + 7}" text-anchor="middle">${xml(o.radians ? piLabel(x) : decimal(x, 4))}</text>`;
   }
   for (
-    let i = Math.ceil(o.ymin / ystep);
-    i <= Math.floor(o.ymax / ystep) && i - Math.ceil(o.ymin / ystep) < 80;
-    i++
+    let i = Math.ceil(o.ymin / ystep / ystride) * ystride;
+    i <= Math.floor(o.ymax / ystep);
+    i += ystride
   ) {
     const y = i * ystep,
       v = Y(y);
     if (o.grid)
       html += `<path d="M${left} ${v}H${w - right}" stroke="${grid}" stroke-width=".8"/>`;
     html += `<path d="M${yAxis - 4} ${v}h8" stroke="${ink}"/>`;
-    if (Math.abs(y) > ystep * 1e-6)
+    if (Math.abs(y) > ystep * 1e-6 && i % ylabels === 0)
       html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(decimal(y, 4))}</text>`;
   }
   html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/>`;
   if (o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
     html += `<text x="${yAxis - 10}" y="${xAxis + font + 7}" text-anchor="end">0</text>`;
-  html += `<text x="${w - right + 9}" y="${xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${yAxis + 13}" y="${top - 9}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
+  html += `<text x="${w - right + 9}" y="${o.professional ? xAxis + 2 * font + 14 : xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${o.professional ? yAxis - 13 : yAxis + 13}" y="${top - 9}" text-anchor="${o.professional ? "end" : "start"}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
   for (const guide of o.guides || []) {
     if (guide.axis === "x" && guide.value >= o.xmin && guide.value <= o.xmax) {
       let x = X(guide.value);
@@ -230,7 +250,7 @@ export function buildGraph(o) {
   }
   for (const c of o.curves)
     if (c.fn)
-      html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? 1.35 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
+      html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? c.strokeWidth || 1.3333 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
   for (const p of o.points || []) {
     if (p.x < o.xmin || p.x > o.xmax || p.y < o.ymin || p.y > o.ymax) continue;
     const x = X(p.x),
@@ -258,7 +278,9 @@ export function drawGraph(element, o) {
   return result;
 }
 export function attachTrace(element, getOptions, onRead) {
-  const show = (x, mouseY = null) => {
+  let cachedOptions,
+    intersections = [];
+  const show = (x, mouseY = null, scale = 1) => {
     let o = getOptions(),
       g = graphGeometry(o);
     if (x < o.xmin || x > o.xmax) return;
@@ -278,17 +300,40 @@ export function attachTrace(element, getOptions, onRead) {
         (a, b) =>
           Math.abs(g.Y(a.value) - mouseY) - Math.abs(g.Y(b.value) - mouseY),
       );
-    let c = candidates[0],
-      px = g.X(x),
+    if (cachedOptions !== o) {
+      intersections = findIntersections(o.curves, o);
+      cachedOptions = o;
+    }
+    let snapped = null;
+    if (mouseY !== null) {
+      let distance = 14 / scale;
+      for (const p of intersections) {
+        const d = Math.hypot(g.X(p.x) - g.X(x), g.Y(p.y) - mouseY);
+        if (d < distance) {
+          snapped = p;
+          distance = d;
+        }
+      }
+    }
+    let c = snapped
+      ? {
+          color: snapped.color,
+          value: snapped.y,
+          name: snapped.names.join(" ∩ "),
+        }
+      : candidates[0];
+    if (snapped) x = snapped.x;
+    let px = g.X(x),
       py = g.Y(c.value),
-      label = `${c.name || "f"}: (${o.radians ? piLabel(x) : decimal(x)}; ${decimal(c.value)})`,
-      tx = Math.max(g.left + 4, Math.min(g.w - g.right - 220, px + 14)),
+      label = `${snapped ? "Interseção " : ""}${c.name || "f"}: (${o.radians ? piLabel(x) : decimal(x)}; ${decimal(c.value)})`,
+      tx = Math.max(g.left + 4, Math.min(g.w - g.right - 290, px + 14)),
       ty = Math.max(g.top + 24, Math.min(g.h - g.bottom - 12, py - 15));
     element.querySelector("#graph-trace").innerHTML =
-      `<path d="M${px} ${g.top}V${g.h - g.bottom}" stroke="#708472" stroke-width="1" stroke-dasharray="4 5"/><circle cx="${px}" cy="${py}" r="5" fill="${c.color}" stroke="white" stroke-width="2"/><rect x="${tx}" y="${ty - 22}" width="216" height="29" rx="5" fill="#fff" stroke="#bdcdbb"/><text x="${tx + 9}" y="${ty - 3}" font-family="Arial,sans-serif" font-size="15" fill="#243d2e">${xml(label)}</text>`;
+      `<path d="M${px} ${g.top}V${g.h - g.bottom}" stroke="#708472" stroke-width="1" stroke-dasharray="4 5"/><circle cx="${px}" cy="${py}" r="5" fill="${c.color}" stroke="white" stroke-width="2"/><rect x="${tx}" y="${ty - 22}" width="286" height="29" rx="5" fill="#fff" stroke="#bdcdbb"/><text x="${tx + 9}" y="${ty - 3}" font-family="Arial,sans-serif" font-size="15" fill="#243d2e">${xml(label)}</text>`;
     onRead?.(label);
   };
   element.onpointermove = (e) => {
+    if (element.dataset.dragging === "true") return;
     const matrix = element.getScreenCTM();
     if (!matrix) return;
     const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(
@@ -303,7 +348,7 @@ export function attachTrace(element, getOptions, onRead) {
       p.y > g.h - g.bottom
     )
       return;
-    show(g.fromX(p.x), p.y);
+    show(g.fromX(p.x), p.y, Math.hypot(matrix.a, matrix.b));
   };
   element.onpointerleave = () => {
     const group = element.querySelector("#graph-trace");
@@ -372,6 +417,10 @@ export function downloadGraph(options, format = "svg") {
 
 export function attachGraphZoom(element, getOptions, apply) {
   const wheel = (e) => {
+    if (element.dataset.dragging === "true") {
+      e.preventDefault();
+      return;
+    }
     const matrix = element.getScreenCTM();
     if (!matrix) return;
     e.preventDefault();
@@ -395,4 +444,60 @@ export function attachGraphZoom(element, getOptions, apply) {
   };
   element.addEventListener("wheel", wheel, { passive: false });
   return () => element.removeEventListener("wheel", wheel);
+}
+
+export function attachGraphPan(element, getOptions, apply) {
+  let drag = null;
+  const down = (e) => {
+    if (e.button !== 0 || drag) return;
+    const matrix = element.getScreenCTM();
+    if (!matrix) return;
+    const inverse = matrix.inverse(),
+      p = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
+    const o = getOptions();
+    drag = {
+      id: e.pointerId,
+      p,
+      inverse,
+      view: { xmin: o.xmin, xmax: o.xmax, ymin: o.ymin, ymax: o.ymax },
+      geometry: graphGeometry(o),
+    };
+    element.dataset.dragging = "true";
+    element.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    const trace = element.querySelector("#graph-trace");
+    if (trace) trace.innerHTML = "";
+  };
+  const move = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(drag.inverse),
+      v = drag.view,
+      g = drag.geometry;
+    apply(
+      panWindow(
+        v,
+        (-(p.x - drag.p.x) * (v.xmax - v.xmin)) / g.W,
+        ((p.y - drag.p.y) * (v.ymax - v.ymin)) / g.H,
+      ),
+    );
+  };
+  const up = (e) => {
+    if (!drag || e.pointerId !== drag.id) return;
+    const id = drag.id;
+    drag = null;
+    delete element.dataset.dragging;
+    if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+  };
+  element.addEventListener("pointerdown", down);
+  element.addEventListener("pointermove", move);
+  element.addEventListener("pointerup", up);
+  element.addEventListener("pointercancel", up);
+  element.addEventListener("lostpointercapture", up);
+  return () => {
+    element.removeEventListener("pointerdown", down);
+    element.removeEventListener("pointermove", move);
+    element.removeEventListener("pointerup", up);
+    element.removeEventListener("pointercancel", up);
+    element.removeEventListener("lostpointercapture", up);
+  };
 }

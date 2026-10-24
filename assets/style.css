@@ -2430,3 +2430,31 @@ body.presenting .function-lab .function-notes {
     margin-top: 8px;
   }
 }
+
+/* Direct graph manipulation and native mathematical typesetting. */
+#function-graph {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+#function-graph[data-dragging="true"] {
+  cursor: grabbing;
+}
+.function-lab .symbolic-formula math {
+  font-family: "Cambria Math", "STIX Two Math", math;
+  font-size: 20px;
+}
+.function-lab .symbolic-formula {
+  overflow-x: auto;
+  padding: 10px 8px;
+}
+.function-lab .main-equation {
+  align-items: center;
+  min-height: 64px;
+}
+#clear-functions {
+  margin-top: 8px;
+}
+.expression-row > .compact-field {
+  margin-top: 8px;
+}

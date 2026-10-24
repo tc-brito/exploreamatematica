@@ -21,7 +21,7 @@ export const FAMILIES = [
 export const PARAMS = {
   afim: [
     ["a", "Inclinação", -5, 5, 0.1],
-    ["b", "Intercepto", -5, 5, 0.1],
+    ["b", "Coeficiente linear", -5, 5, 0.1],
   ],
   quadratica: [
     ["a", "Coeficiente de x²", -5, 5, 0.1],
@@ -47,7 +47,7 @@ export const PARAMS = {
   ],
   trigonometrica: [
     ["a", "Deslocamento vertical", -5, 5, 0.1],
-    ["b", "Amplitude / escala", -5, 5, 0.1],
+    ["b", "Amplitude", -5, 5, 0.1],
     ["c", "Frequência angular", -5, 5, 0.1],
     ["d", "Fase · radianos", -6.3, 6.3, 0.05],
   ],
@@ -79,6 +79,7 @@ export function makeCurve(type = "quadratica", index = 0) {
 }
 export function makeExpression(index = 0) {
   return {
+    strokeWidth: 1,
     expression: "",
     color: PALETTE[index % PALETTE.length][0],
     visible: true,
@@ -109,6 +110,8 @@ export function defaultFunctions() {
       widthCm: 14,
       heightCm: 9,
       axesBold: false,
+      xstep: "",
+      ystep: "",
       xlabel: "x",
       ylabel: "y",
       radians: false,
@@ -172,6 +175,47 @@ const num = (n) =>
     maximumFractionDigits: 4,
     useGrouping: false,
   });
+export function familyMathML(c) {
+  const v = (s) => `<mi>${s}</mi>`,
+    op = (s) => `<mo>${s}</mo>`;
+  const x = v("x"),
+    a = v("a"),
+    b = v("b"),
+    cc = v("c"),
+    d = v("d"),
+    plus = op("+");
+  const body = {
+    afim: a + x + plus + b,
+    quadratica: a + `<msup>${x}<mn>2</mn></msup>` + plus + b + x + plus + cc,
+    exponencial: a + op("·") + `<msup>${b}${x}</msup>` + plus + cc,
+    logistica: `<mfrac>${a}<mrow><mn>1</mn>${plus}<msup><mi mathvariant="normal">e</mi><mrow>${op("−")}${b}${op("(")}${x}${op("−")}${cc}${op(")")}</mrow></msup></mrow></mfrac>${plus}${d}`,
+    logaritmica:
+      a +
+      op("·") +
+      `<msub><mi mathvariant="normal">log</mi>${b}</msub>` +
+      op("(") +
+      x +
+      op("−") +
+      cc +
+      op(")") +
+      plus +
+      d,
+    modular: a + op("|") + x + op("−") + b + op("|") + plus + cc,
+    trigonometrica:
+      a +
+      plus +
+      b +
+      op("·") +
+      `<mi mathvariant="normal">${c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen"}</mi>` +
+      op("(") +
+      cc +
+      x +
+      plus +
+      d +
+      op(")"),
+  }[c.type];
+  return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow>${body}</mrow></math>`;
+}
 export function familyFormula(c, symbolic = false) {
   const trig = c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen";
   if (symbolic)
@@ -496,6 +540,7 @@ export function sanitizeFunctions(raw) {
   const readExpression = (c, i) => {
     c = c && typeof c === "object" ? c : {};
     return {
+      strokeWidth: finite(c.strokeWidth, 1, 0.25, 6),
       expression: String(c.expression ?? "").slice(0, 240),
       color: PALETTE.some(([v]) => v === c.color) ? c.color : PALETTE[i % 8][0],
       visible: c.visible !== false,
@@ -523,6 +568,15 @@ export function sanitizeFunctions(raw) {
     out.free.widthCm = finite(f.widthCm, 14, 6, 30);
     out.free.heightCm = finite(f.heightCm, 9, 4, 25);
     out.free.axesBold = f.axesBold === true;
+    for (const k of ["xstep", "ystep"]) {
+      const rawStep = String(f[k] ?? "").slice(0, 40);
+      try {
+        const n = finiteInput(rawStep);
+        out.free[k] = n > 0 ? rawStep : "";
+      } catch {
+        out.free[k] = "";
+      }
+    }
     for (const k of ["xlabel", "ylabel"])
       if (typeof f[k] === "string") out.free[k] = f[k].slice(0, 30);
     for (const k of ["radians", "grid", "legend"]) out.free[k] = f[k] === true;

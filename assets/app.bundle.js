@@ -583,7 +583,7 @@
   var PARAMS = {
     afim: [
       ["a", "Inclina\xE7\xE3o", -5, 5, 0.1],
-      ["b", "Intercepto", -5, 5, 0.1]
+      ["b", "Coeficiente linear", -5, 5, 0.1]
     ],
     quadratica: [
       ["a", "Coeficiente de x\xB2", -5, 5, 0.1],
@@ -609,7 +609,7 @@
     ],
     trigonometrica: [
       ["a", "Deslocamento vertical", -5, 5, 0.1],
-      ["b", "Amplitude / escala", -5, 5, 0.1],
+      ["b", "Amplitude", -5, 5, 0.1],
       ["c", "Frequ\xEAncia angular", -5, 5, 0.1],
       ["d", "Fase \xB7 radianos", -6.3, 6.3, 0.05]
     ],
@@ -641,6 +641,7 @@
   }
   function makeExpression(index = 0) {
     return {
+      strokeWidth: 1,
       expression: "",
       color: PALETTE[index % PALETTE.length][0],
       visible: true,
@@ -671,6 +672,8 @@
         widthCm: 14,
         heightCm: 9,
         axesBold: false,
+        xstep: "",
+        ystep: "",
         xlabel: "x",
         ylabel: "y",
         radians: false,
@@ -720,6 +723,20 @@
     maximumFractionDigits: 4,
     useGrouping: false
   });
+  function familyMathML(c) {
+    const v = (s) => `<mi>${s}</mi>`, op = (s) => `<mo>${s}</mo>`;
+    const x = v("x"), a = v("a"), b = v("b"), cc = v("c"), d = v("d"), plus = op("+");
+    const body = {
+      afim: a + x + plus + b,
+      quadratica: a + `<msup>${x}<mn>2</mn></msup>` + plus + b + x + plus + cc,
+      exponencial: a + op("\xB7") + `<msup>${b}${x}</msup>` + plus + cc,
+      logistica: `<mfrac>${a}<mrow><mn>1</mn>${plus}<msup><mi mathvariant="normal">e</mi><mrow>${op("\u2212")}${b}${op("(")}${x}${op("\u2212")}${cc}${op(")")}</mrow></msup></mrow></mfrac>${plus}${d}`,
+      logaritmica: a + op("\xB7") + `<msub><mi mathvariant="normal">log</mi>${b}</msub>` + op("(") + x + op("\u2212") + cc + op(")") + plus + d,
+      modular: a + op("|") + x + op("\u2212") + b + op("|") + plus + cc,
+      trigonometrica: a + plus + b + op("\xB7") + `<mi mathvariant="normal">${c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen"}</mi>` + op("(") + cc + x + plus + d + op(")")
+    }[c.type];
+    return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow>${body}</mrow></math>`;
+  }
   function familyFormula(c, symbolic = false) {
     const trig = c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen";
     if (symbolic)
@@ -987,6 +1004,7 @@
     const readExpression = (c, i) => {
       c = c && typeof c === "object" ? c : {};
       return {
+        strokeWidth: finite(c.strokeWidth, 1, 0.25, 6),
         expression: String(c.expression ?? "").slice(0, 240),
         color: PALETTE.some(([v]) => v === c.color) ? c.color : PALETTE[i % 8][0],
         visible: c.visible !== false,
@@ -1014,6 +1032,15 @@
       out.free.widthCm = finite(f.widthCm, 14, 6, 30);
       out.free.heightCm = finite(f.heightCm, 9, 4, 25);
       out.free.axesBold = f.axesBold === true;
+      for (const k of ["xstep", "ystep"]) {
+        const rawStep = String(f[k] ?? "").slice(0, 40);
+        try {
+          const n = finiteInput(rawStep);
+          out.free[k] = n > 0 ? rawStep : "";
+        } catch {
+          out.free[k] = "";
+        }
+      }
       for (const k of ["xlabel", "ylabel"])
         if (typeof f[k] === "string") out.free[k] = f[k].slice(0, 30);
       for (const k of ["radians", "grid", "legend"]) out.free[k] = f[k] === true;
@@ -1551,6 +1578,85 @@
     }
     return out;
   }
+  function panWindow(view, dx, dy) {
+    dx = Math.max(-1e4 - view.xmin, Math.min(1e4 - view.xmax, dx));
+    dy = Math.max(-1e4 - view.ymin, Math.min(1e4 - view.ymax, dy));
+    return {
+      xmin: view.xmin + dx,
+      xmax: view.xmax + dx,
+      ymin: view.ymin + dy,
+      ymax: view.ymax + dy
+    };
+  }
+
+  // assets/graph-analysis.js
+  function findIntersections(curves, view) {
+    const points = [], n = 600, span = view.xmax - view.xmin;
+    const tolerance = Math.max(1e-10, (view.ymax - view.ymin) * 1e-9);
+    for (let a = 0; a < curves.length; a++)
+      for (let b = a + 1; b < curves.length; b++) {
+        const f = curves[a].fn, g = curves[b].fn;
+        if (!f || !g) continue;
+        const diff = (x) => f(x) - g(x);
+        const samples = Array.from({ length: n + 1 }, (_, i) => ({
+          x: view.xmin + span * i / n
+        }));
+        samples.forEach((p) => p.d = diff(p.x));
+        if (samples.every((p) => Number.isFinite(p.d) && Math.abs(p.d) < tolerance))
+          continue;
+        const add2 = (x) => {
+          const y = f(x), z = g(x);
+          if (!Number.isFinite(y) || !Number.isFinite(z) || Math.abs(y - z) > tolerance || y < view.ymin || y > view.ymax)
+            return;
+          const existing = points.find(
+            (p) => Math.abs(p.x - x) < span * 1e-7 && Math.abs(p.y - y) < tolerance * 100
+          );
+          const names2 = [
+            curves[a].name || String(a + 1),
+            curves[b].name || String(b + 1)
+          ];
+          if (existing)
+            existing.names = [.../* @__PURE__ */ new Set([...existing.names, ...names2])];
+          else if (points.length < 200)
+            points.push({ x, y, names: names2, color: curves[a].color });
+        };
+        for (let i = 0; i < n; i++) {
+          const p = samples[i], q = samples[i + 1];
+          if (!Number.isFinite(p.d) || !Number.isFinite(q.d)) continue;
+          if (p.d * q.d < 0) {
+            let lo = p.x, hi = q.x, dlo = p.d;
+            for (let k = 0; k < 55; k++) {
+              const mid = (lo + hi) / 2, d = diff(mid);
+              if (!Number.isFinite(d)) break;
+              if (d === 0) {
+                lo = hi = mid;
+                break;
+              }
+              if (Math.sign(d) === Math.sign(dlo)) {
+                lo = mid;
+                dlo = d;
+              } else hi = mid;
+            }
+            add2((lo + hi) / 2);
+          }
+        }
+        for (let i = 0; i <= n; i++) {
+          const p = samples[i], prev = samples[i - 1], next = samples[i + 1];
+          if (p.d === 0 && (!prev || prev.d !== 0) && (!next || next.d !== 0))
+            add2(p.x);
+          if (prev && next && Number.isFinite(p.d) && Math.abs(p.d) < Math.abs(prev.d) && Math.abs(p.d) < Math.abs(next.d)) {
+            let lo = prev.x, hi = next.x;
+            for (let k = 0; k < 60; k++) {
+              const x1 = lo + (hi - lo) / 3, x2 = hi - (hi - lo) / 3;
+              if (Math.abs(diff(x1)) < Math.abs(diff(x2))) hi = x2;
+              else lo = x1;
+            }
+            add2((lo + hi) / 2);
+          }
+        }
+      }
+    return points.sort((a, b) => a.x - b.x);
+  }
 
   // assets/plot.js
   var xml = (s) => String(s).replace(
@@ -1566,7 +1672,10 @@
     return [1, 2, 2.5, 5, 10].map((x) => x * p).find((x) => x >= raw) || 10 * p;
   }
   function graphGeometry(o) {
-    const w = o.width || 900, h = o.height || 530, font = o.professional ? 14.6667 : 15, left = o.professional ? 44 : 52, right = o.professional ? 25 : 28, legendCount = o.legend ? o.curves.filter((c) => c.showEquation !== false).length : 0, legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20, top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28, bottom = o.professional ? 34 : 38, W = w - left - right, H = h - top - bottom, X = (x) => left + (x - o.xmin) / (o.xmax - o.xmin) * W, Y = (y) => top + (o.ymax - y) / (o.ymax - o.ymin) * H;
+    const w = o.width || 900, h = o.height || 530, font = o.professional ? 14.6667 : 15, left = o.professional ? Math.max(
+      44,
+      Math.min(w * 0.4, (o.ylabel || "").length * font * 0.52 + 16)
+    ) : 52, right = o.professional ? 25 : 28, legendCount = o.legend ? o.curves.filter((c) => c.showEquation !== false).length : 0, legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20, top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28, bottom = o.professional ? 54 : 38, W = w - left - right, H = h - top - bottom, X = (x) => left + (x - o.xmin) / (o.xmax - o.xmin) * W, Y = (y) => top + (o.ymax - y) / (o.ymax - o.ymin) * H;
     return {
       w,
       h,
@@ -1647,7 +1756,8 @@
   function buildGraph(o) {
     const g = graphGeometry(o), { w, h, left, right, top, bottom, W, H, X, Y, font } = g, ink = o.professional ? "#111111" : "#4f5d59", grid = o.professional ? "#dedede" : "#edf0ed", family = o.professional ? "Calibri,Arial,sans-serif" : "DM Sans,Arial,sans-serif", xAxis = Math.max(top, Math.min(h - bottom, Y(0))), yAxis = Math.max(left, Math.min(w - right, X(0)));
     let xstep;
-    if (o.radians) {
+    if (Number.isFinite(o.xstep) && o.xstep > 0) xstep = o.xstep;
+    else if (o.radians) {
       let steps = [
         Math.PI / 24,
         Math.PI / 12,
@@ -1669,32 +1779,40 @@
       ];
       xstep = steps.find((s) => s >= (o.xmax - o.xmin) / (W / 78)) || 4096 * Math.PI;
     } else xstep = niceStep(o.xmax - o.xmin, Math.max(3, W / 75));
-    const ystep = niceStep(o.ymax - o.ymin, Math.max(3, H / 58)), id = "graph-clip";
+    const ystep = Number.isFinite(o.ystep) && o.ystep > 0 ? o.ystep : niceStep(o.ymax - o.ymin, Math.max(3, H / 58)), id = "graph-clip";
     let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
     if (o.legend)
       o.curves.filter((c) => c.showEquation !== false).forEach((c, i) => {
         html += `<line x1="${left}" x2="${left + 23}" y1="${19 + i * g.legendStep}" y2="${19 + i * g.legendStep}" stroke="${c.color}" stroke-width="1.6"/><text x="${left + 33}" y="${24 + i * g.legendStep}" font-size="${Math.min(font, g.legendStep - 2)}">${xml(c.label)}</text>`;
       });
-    for (let i = Math.ceil(o.xmin / xstep); i <= Math.floor(o.xmax / xstep) && i - Math.ceil(o.xmin / xstep) < 80; i++) {
+    const xstride = Math.max(1, Math.ceil((o.xmax - o.xmin) / xstep / 200)), ystride = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / 200));
+    const xlabels = Math.max(
+      xstride,
+      Math.ceil((o.xmax - o.xmin) / xstep / (W / 35))
+    ), ylabels = Math.max(
+      ystride,
+      Math.ceil((o.ymax - o.ymin) / ystep / (H / 25))
+    );
+    for (let i = Math.ceil(o.xmin / xstep / xstride) * xstride; i <= Math.floor(o.xmax / xstep); i += xstride) {
       const x = i * xstep, u = X(x);
       if (o.grid)
         html += `<path d="M${u} ${top}V${h - bottom}" stroke="${grid}" stroke-width=".8"/>`;
       html += `<path d="M${u} ${xAxis - 4}v8" stroke="${ink}"/>`;
-      if (Math.abs(x) > xstep * 1e-6)
+      if (Math.abs(x) > xstep * 1e-6 && i % xlabels === 0)
         html += `<text x="${u}" y="${xAxis + font + 7 > h - 8 ? xAxis - 9 : xAxis + font + 7}" text-anchor="middle">${xml(o.radians ? piLabel(x) : decimal(x, 4))}</text>`;
     }
-    for (let i = Math.ceil(o.ymin / ystep); i <= Math.floor(o.ymax / ystep) && i - Math.ceil(o.ymin / ystep) < 80; i++) {
+    for (let i = Math.ceil(o.ymin / ystep / ystride) * ystride; i <= Math.floor(o.ymax / ystep); i += ystride) {
       const y = i * ystep, v = Y(y);
       if (o.grid)
         html += `<path d="M${left} ${v}H${w - right}" stroke="${grid}" stroke-width=".8"/>`;
       html += `<path d="M${yAxis - 4} ${v}h8" stroke="${ink}"/>`;
-      if (Math.abs(y) > ystep * 1e-6)
+      if (Math.abs(y) > ystep * 1e-6 && i % ylabels === 0)
         html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(decimal(y, 4))}</text>`;
     }
     html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/>`;
     if (o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
       html += `<text x="${yAxis - 10}" y="${xAxis + font + 7}" text-anchor="end">0</text>`;
-    html += `<text x="${w - right + 9}" y="${xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${yAxis + 13}" y="${top - 9}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
+    html += `<text x="${w - right + 9}" y="${o.professional ? xAxis + 2 * font + 14 : xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${o.professional ? yAxis - 13 : yAxis + 13}" y="${top - 9}" text-anchor="${o.professional ? "end" : "start"}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
     for (const guide2 of o.guides || []) {
       if (guide2.axis === "x" && guide2.value >= o.xmin && guide2.value <= o.xmax) {
         let x = X(guide2.value);
@@ -1706,7 +1824,7 @@
     }
     for (const c of o.curves)
       if (c.fn)
-        html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? 1.35 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
+        html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? c.strokeWidth || 1.3333 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
     for (const p of o.points || []) {
       if (p.x < o.xmin || p.x > o.xmax || p.y < o.ymin || p.y > o.ymax) continue;
       const x = X(p.x), y = Y(p.y);
@@ -1733,7 +1851,8 @@
     return result;
   }
   function attachTrace(element, getOptions, onRead) {
-    const show = (x, mouseY = null) => {
+    let cachedOptions, intersections = [];
+    const show = (x, mouseY = null, scale2 = 1) => {
       let o = getOptions(), g = graphGeometry(o);
       if (x < o.xmin || x > o.xmax) return;
       let candidates = o.curves.map((c2) => ({ ...c2, value: c2.fn?.(x) })).filter(
@@ -1748,11 +1867,33 @@
         candidates.sort(
           (a, b) => Math.abs(g.Y(a.value) - mouseY) - Math.abs(g.Y(b.value) - mouseY)
         );
-      let c = candidates[0], px = g.X(x), py = g.Y(c.value), label = `${c.name || "f"}: (${o.radians ? piLabel(x) : decimal(x)}; ${decimal(c.value)})`, tx = Math.max(g.left + 4, Math.min(g.w - g.right - 220, px + 14)), ty = Math.max(g.top + 24, Math.min(g.h - g.bottom - 12, py - 15));
-      element.querySelector("#graph-trace").innerHTML = `<path d="M${px} ${g.top}V${g.h - g.bottom}" stroke="#708472" stroke-width="1" stroke-dasharray="4 5"/><circle cx="${px}" cy="${py}" r="5" fill="${c.color}" stroke="white" stroke-width="2"/><rect x="${tx}" y="${ty - 22}" width="216" height="29" rx="5" fill="#fff" stroke="#bdcdbb"/><text x="${tx + 9}" y="${ty - 3}" font-family="Arial,sans-serif" font-size="15" fill="#243d2e">${xml(label)}</text>`;
+      if (cachedOptions !== o) {
+        intersections = findIntersections(o.curves, o);
+        cachedOptions = o;
+      }
+      let snapped = null;
+      if (mouseY !== null) {
+        let distance = 14 / scale2;
+        for (const p of intersections) {
+          const d = Math.hypot(g.X(p.x) - g.X(x), g.Y(p.y) - mouseY);
+          if (d < distance) {
+            snapped = p;
+            distance = d;
+          }
+        }
+      }
+      let c = snapped ? {
+        color: snapped.color,
+        value: snapped.y,
+        name: snapped.names.join(" \u2229 ")
+      } : candidates[0];
+      if (snapped) x = snapped.x;
+      let px = g.X(x), py = g.Y(c.value), label = `${snapped ? "Interse\xE7\xE3o " : ""}${c.name || "f"}: (${o.radians ? piLabel(x) : decimal(x)}; ${decimal(c.value)})`, tx = Math.max(g.left + 4, Math.min(g.w - g.right - 290, px + 14)), ty = Math.max(g.top + 24, Math.min(g.h - g.bottom - 12, py - 15));
+      element.querySelector("#graph-trace").innerHTML = `<path d="M${px} ${g.top}V${g.h - g.bottom}" stroke="#708472" stroke-width="1" stroke-dasharray="4 5"/><circle cx="${px}" cy="${py}" r="5" fill="${c.color}" stroke="white" stroke-width="2"/><rect x="${tx}" y="${ty - 22}" width="286" height="29" rx="5" fill="#fff" stroke="#bdcdbb"/><text x="${tx + 9}" y="${ty - 3}" font-family="Arial,sans-serif" font-size="15" fill="#243d2e">${xml(label)}</text>`;
       onRead?.(label);
     };
     element.onpointermove = (e) => {
+      if (element.dataset.dragging === "true") return;
       const matrix = element.getScreenCTM();
       if (!matrix) return;
       const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(
@@ -1760,7 +1901,7 @@
       ), o = getOptions(), g = graphGeometry(o);
       if (p.x < g.left || p.x > g.w - g.right || p.y < g.top || p.y > g.h - g.bottom)
         return;
-      show(g.fromX(p.x), p.y);
+      show(g.fromX(p.x), p.y, Math.hypot(matrix.a, matrix.b));
     };
     element.onpointerleave = () => {
       const group = element.querySelector("#graph-trace");
@@ -1820,6 +1961,10 @@
   }
   function attachGraphZoom(element, getOptions, apply) {
     const wheel = (e) => {
+      if (element.dataset.dragging === "true") {
+        e.preventDefault();
+        return;
+      }
       const matrix = element.getScreenCTM();
       if (!matrix) return;
       e.preventDefault();
@@ -1839,6 +1984,58 @@
     };
     element.addEventListener("wheel", wheel, { passive: false });
     return () => element.removeEventListener("wheel", wheel);
+  }
+  function attachGraphPan(element, getOptions, apply) {
+    let drag = null;
+    const down = (e) => {
+      if (e.button !== 0 || drag) return;
+      const matrix = element.getScreenCTM();
+      if (!matrix) return;
+      const inverse = matrix.inverse(), p = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
+      const o = getOptions();
+      drag = {
+        id: e.pointerId,
+        p,
+        inverse,
+        view: { xmin: o.xmin, xmax: o.xmax, ymin: o.ymin, ymax: o.ymax },
+        geometry: graphGeometry(o)
+      };
+      element.dataset.dragging = "true";
+      element.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      const trace = element.querySelector("#graph-trace");
+      if (trace) trace.innerHTML = "";
+    };
+    const move = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(drag.inverse), v = drag.view, g = drag.geometry;
+      apply(
+        panWindow(
+          v,
+          -(p.x - drag.p.x) * (v.xmax - v.xmin) / g.W,
+          (p.y - drag.p.y) * (v.ymax - v.ymin) / g.H
+        )
+      );
+    };
+    const up = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const id = drag.id;
+      drag = null;
+      delete element.dataset.dragging;
+      if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+    };
+    element.addEventListener("pointerdown", down);
+    element.addEventListener("pointermove", move);
+    element.addEventListener("pointerup", up);
+    element.addEventListener("pointercancel", up);
+    element.addEventListener("lostpointercapture", up);
+    return () => {
+      element.removeEventListener("pointerdown", down);
+      element.removeEventListener("pointermove", move);
+      element.removeEventListener("pointerup", up);
+      element.removeEventListener("pointercancel", up);
+      element.removeEventListener("lostpointercapture", up);
+    };
   }
 
   // assets/functions-lab.js
@@ -1903,7 +2100,7 @@
       ).join(
         ""
       )}</div><div class="plot-zoom"><button id="graph-minus" aria-label="Reduzir zoom do gr\xE1fico">\u2212</button><button id="graph-reset" aria-label="Restaurar janela do gr\xE1fico">\u21BA</button><button id="graph-plus" aria-label="Ampliar zoom do gr\xE1fico">+</button></div><div id="color-palette" class="plot-palette" hidden role="group" aria-label="Escolha uma cor">${PALETTE.map(([color, label]) => `<button data-palette-color="${color}" style="--swatch:${color}" aria-label="${label}" title="${label}"><i></i></button>`).join("")}<button id="close-palette" aria-label="Fechar cores">\xD7</button></div></div>
- <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gr\xE1fico de fun\xE7\xF5es"></svg><span class="graph-gesture">Role para dar zoom \xB7 Passe sobre a curva para ver coordenadas</span></div><div class="export-toolbar"><button id="export-svg">\u2193 SVG vetorial</button><button id="export-png">\u2193 PNG</button></div>`,
+ <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gr\xE1fico de fun\xE7\xF5es"></svg><span class="graph-gesture">Arraste para mover \xB7 Role para dar zoom \xB7 \xCDm\xE3 nas interse\xE7\xF5es</span></div><div class="export-toolbar"><button id="export-svg">\u2193 SVG vetorial</button><button id="export-png">\u2193 PNG</button></div>`,
       nav
     );
     $2(".lab").classList.add("function-lab");
@@ -1922,7 +2119,7 @@
     };
     function equationRows() {
       return rows.map(
-        (q, i) => `<div class="expression-row"><label class="expression-field" for="expression-${i}"><span>${names[i + (free ? 0 : 1)]}(x) =</span><input id="expression-${i}" value="${xml(q.expression)}" maxlength="240" placeholder="Digite uma fun\xE7\xE3o" autocomplete="off" spellcheck="false"></label><div class="expression-switches">${check2("visible-" + i, "Mostrar", q.visible)}${free ? check2("equation-" + i, "Mostrar equa\xE7\xE3o", q.showEquation) : ""}<button data-remove-expression="${i}" aria-label="Remover fun\xE7\xE3o ${names[i + (free ? 0 : 1)]}" ${rows.length === 1 ? "disabled" : ""}>\xD7</button></div>${free ? `<div class="equation-domain"><span>Dom\xEDnio de x</span>${field("min-" + i, "M\xEDnimo", q.min, 'placeholder="\u2212\u221E" aria-label="In\xEDcio do dom\xEDnio de ' + names[i] + '"')}${field("max-" + i, "M\xE1ximo", q.max, 'placeholder="+\u221E" aria-label="Fim do dom\xEDnio de ' + names[i] + '"')}</div>` : ""}<p class="small error" id="expression-error-${i}" role="status"></p></div>`
+        (q, i) => `<div class="expression-row"><label class="expression-field" for="expression-${i}"><span>${names[i + (free ? 0 : 1)]}(x) =</span><input id="expression-${i}" value="${xml(q.expression)}" maxlength="240" placeholder="Digite uma fun\xE7\xE3o" autocomplete="off" spellcheck="false"></label><div class="expression-switches">${check2("visible-" + i, "Mostrar", q.visible)}${free ? check2("equation-" + i, "Mostrar equa\xE7\xE3o", q.showEquation) : ""}<button data-remove-expression="${i}" aria-label="Remover fun\xE7\xE3o ${names[i + (free ? 0 : 1)]}" ${rows.length === 1 ? "disabled" : ""}>\xD7</button></div>${free ? `<div class="equation-domain"><span>Dom\xEDnio de x</span>${field("min-" + i, "M\xEDnimo", q.min, 'placeholder="\u2212\u221E" aria-label="In\xEDcio do dom\xEDnio de ' + names[i] + '"')}${field("max-" + i, "M\xE1ximo", q.max, 'placeholder="+\u221E" aria-label="Fim do dom\xEDnio de ' + names[i] + '"')}</div>${numeric("stroke-" + i, "Espessura da curva (pt)", q.strokeWidth ?? 1, 'min="0.25" max="6" step="0.25"')}` : ""}<p class="small error" id="expression-error-${i}" role="status"></p></div>`
       ).join("") + `<button id="add-expression" class="wide-button" ${rows.length >= 5 ? "disabled" : ""}>\uFF0B Adicionar fun\xE7\xE3o <span>${rows.length}/5</span></button>`;
     }
     function familyControls() {
@@ -1935,10 +2132,10 @@
           ["tan", "Tangente"]
         ],
         c.trig
-      ) : ""}<div class="main-equation"><span class="symbolic-formula">${xml(familyFormula(c, true))}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}</div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>`;
+      ) : ""}<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar fun\xE7\xF5es</button></div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>`;
     }
     function assessmentControls() {
-      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${check2("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check2("radians", "Eixo x em radianos", f.radians)}${check2("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem it\xE1lico.</p></details><details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check2("point-project", "Proje\xE7\xF5es nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>\uFF0B Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura \xB7 cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente \xB7 SVG em tamanho f\xEDsico \xB7 PNG a 300 dpi.</p></details>`;
+      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${check2("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check2("radians", "Eixo x em radianos", f.radians)}${check2("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem it\xE1lico.</p></details><details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check2("point-project", "Proje\xE7\xF5es nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>\uFF0B Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura \xB7 cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente \xB7 SVG em tamanho f\xEDsico \xB7 PNG a 300 dpi.</p></details>`;
     }
     function pointList() {
       return f.points.map(
@@ -1958,6 +2155,7 @@
             curves.push({
               fn,
               color: q.color,
+              strokeWidth: (q.strokeWidth ?? 1) * 96 / 72,
               name: names[i + (free ? 0 : 1)],
               label: `${names[i + (free ? 0 : 1)]}(x) = ${q.expression}`,
               showEquation: q.showEquation
@@ -1979,13 +2177,17 @@
           curves,
           legend: true,
           professional: true,
-          guides
+          guides,
+          xstep: f.xstep.trim() ? finiteInput(f.xstep) : void 0,
+          ystep: f.ystep.trim() ? finiteInput(f.ystep) : void 0
         };
         $2("#graph-summary").textContent = `${decimal(f.widthCm)} \xD7 ${decimal(f.heightCm)} cm \xB7 Calibri \xB7 fundo transparente`;
       } else {
         const error = familyError(c);
         $2("#family-error").textContent = error;
-        $2(".symbolic-formula").textContent = familyFormula(c, true);
+        $2(".symbolic-formula").innerHTML = familyMathML(c);
+        if (c.type === "trigonometrica")
+          $2("label[for=coef-b] span").textContent = c.trig === "tan" ? "Escala vertical" : "Amplitude";
         $2("#natural-domain").textContent = "Dom\xEDnio natural: " + naturalDomain(c);
         if (c.visible && !error) {
           curves.unshift({
@@ -2037,6 +2239,8 @@
         const T = period(c);
         if (c.type === "trigonometrica")
           summary += T ? ` \xB7 T = ${c.trig === "tan" ? "\u03C0" : "2\u03C0"}/|c| = ${c.trig === "tan" ? "\u03C0" : "2\u03C0"}/|${decimal(c.c)}| \u2248 ${decimal(T)} rad` : " \xB7 Sem per\xEDodo fundamental positivo";
+        if (c.type === "trigonometrica" && c.trig !== "tan")
+          summary += ` \xB7 Amplitude = |b| = ${decimal(Math.abs(c.b))}`;
         $2("#graph-summary").textContent = summary;
         $2("#function-details").innerHTML = `<p>Dom\xEDnio: ${xml(naturalDomain(c))}${c.domain ? ` \u2229 [${decimal(c.min)}; ${decimal(c.max)}]` : ""}.</p>${algebraDetails(c)}${c.type === "logistica" ? "<p>Crescimento log\xEDstico: para b \u2260 0, os patamares da curva completa s\xE3o y = d e y = a + d.</p>" : ""}${c.type === "trigonometrica" ? "<p>As linhas tracejadas mostram os extremos no dom\xEDnio escolhido (seno e cosseno) ou as ass\xEDntotas (tangente). Os \xE2ngulos est\xE3o em radianos.</p>" : ""}<div class="table-scroll"><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${decimal(familyValue(c, x))}</td>`).join("")}</tr></tbody></table></div>`;
         if ($2("#explore-logistic"))
@@ -2045,7 +2249,7 @@
       drawGraph($2("#function-graph"), options);
       $2("#function-graph").setAttribute(
         "aria-label",
-        `Gr\xE1fico com ${curves.length} fun\xE7\xF5es. Janela x de ${decimal(options.xmin)} a ${decimal(options.xmax)}, y de ${decimal(options.ymin)} a ${decimal(options.ymax)}. Role o mouse ou use mais e menos para ajustar o zoom.`
+        `Gr\xE1fico com ${curves.length} fun\xE7\xF5es. Janela x de ${decimal(options.xmin)} a ${decimal(options.xmax)}, y de ${decimal(options.ymin)} a ${decimal(options.ymax)}. Arraste para mover. Role o mouse ou use mais e menos para ajustar o zoom.`
       );
       (!free ? [c] : []).concat(rows).forEach((q, i) => {
         const chip = document.querySelector(`[data-color="${i}"]`);
@@ -2086,6 +2290,21 @@
         $2("#window-error").textContent = e.message;
       }
     };
+    for (const k of ["xmin", "xmax", "ymin", "ymax"])
+      $2("#window-" + k).onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          $2("#apply-window").click();
+        }
+      };
+    if (!free)
+      $2("#clear-functions").onclick = () => {
+        stopAll();
+        s.comparisons = [makeExpression(2)];
+        s.curves = [c];
+        c.visible = true;
+        render2();
+      };
     $2("#graph-plus").onclick = () => setWindow(zoomWindow(windowState, 0.8));
     $2("#graph-minus").onclick = () => setWindow(zoomWindow(windowState, 1.25));
     $2("#graph-reset").onclick = resetWindow;
@@ -2099,6 +2318,14 @@
         draw();
       };
       if (free) {
+        $2("#stroke-" + i).oninput = (e) => {
+          const v = e.target.valueAsNumber;
+          if (Number.isFinite(v) && v >= 0.25 && v <= 6) {
+            q.strokeWidth = v;
+            e.target.setCustomValidity("");
+            draw();
+          } else e.target.setCustomValidity("Use de 0,25 a 6 pt.");
+        };
         $2("#equation-" + i).onchange = (e) => {
           q.showEquation = e.target.checked;
           draw();
@@ -2159,6 +2386,36 @@
       render2();
     }
     if (free) {
+      for (const k of ["x", "y"]) {
+        const el = $2("#" + k + "-step");
+        const update = () => {
+          try {
+            const value = el.value.trim();
+            if (value) {
+              const n = finiteInput(value);
+              if (n <= 0) throw Error("O passo deve ser positivo.");
+              if ((f[k + "max"] - f[k + "min"]) / n > 200)
+                throw Error(
+                  "Use um passo maior: no m\xE1ximo 200 intervalos por eixo."
+                );
+            }
+            f[k + "step"] = value;
+            $2("#step-error").textContent = "";
+            el.removeAttribute("aria-invalid");
+            draw();
+          } catch (e) {
+            $2("#step-error").textContent = e.message;
+            el.setAttribute("aria-invalid", "true");
+          }
+        };
+        el.onchange = update;
+        el.onkeydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            update();
+          }
+        };
+      }
       for (const k of ["xlabel", "ylabel"])
         $2("#" + k).oninput = (e) => {
           f[k] = e.target.value;
@@ -2324,6 +2581,11 @@
       () => options,
       setWindow
     );
+    const removePan = attachGraphPan(
+      $2("#function-graph"),
+      () => options,
+      setWindow
+    );
     $2("#function-graph").onkeydown = (e) => {
       if (["+", "=", "-", "0"].includes(e.key)) {
         e.preventDefault();
@@ -2347,6 +2609,7 @@
     return () => {
       stopAll();
       removeZoom();
+      removePan();
       document.removeEventListener("visibilitychange", visibility);
     };
   }

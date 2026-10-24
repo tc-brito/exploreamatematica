@@ -33,7 +33,10 @@ Abra `http://127.0.0.1:4173`. Para outra porta: `PORT=4175 npm start`.
 - Ordem: afim, quadrática, exponencial, logística, logarítmica, trigonométrica e modular.
 - Família como primeira escolha, função principal com coeficientes e até cinco campos de comparação. Expressões podem usar a, b, c e d para acompanhar os controles. Cores junto ao gráfico e visibilidade individual.
 - Botão de reprodução/pausa em cada coeficiente. A animação para ao trocar de exploração ou ocultar a aba.
-- Coordenadas ao passar o ponteiro, zoom pelo scroll ou botões e janela manual dos eixos x/y. Interface compacta para projeção a 100%; controles laterais com rolagem própria.
+- Coordenadas ao passar o ponteiro, arraste com o botão esquerdo para mover a janela, zoom pelo scroll ou botões e janela manual dos eixos x/y (Enter ou Aplicar janela).
+- Ímã nas interseções próximas ao ponteiro, incluindo tangências. Cálculo numérico na janela visível, com rejeição de falsos cruzamentos em assíntotas; curvas coincidentes não geram pontos isolados.
+- Fórmulas das famílias compostas em MathML local, com frações, expoentes e índices. Botão Limpar funções remove comparações e mantém a curva principal.
+- b é identificado como coeficiente linear na afim e amplitude no seno/cosseno (amplitude geométrica |b|); na tangente, escala vertical. Interface compacta para projeção a 100%; controles laterais com rolagem própria.
 - Domínio natural por padrão. A restrição opcional do domínio é diferente da janela visível do gráfico.
 - Seno, cosseno e tangente na forma **a + b · trig(cx + d)**. Eixo x em radianos; máximos/mínimos e assíntotas tracejados; fórmula e cálculo do período.
 - A função logística também está acessível por um atalho na função exponencial.
@@ -43,6 +46,8 @@ Abra `http://127.0.0.1:4173`. Para outra porta: `PORT=4175 npm start`.
 
 - Até cinco expressões, oito cores, pontos com rótulos e projeções nos eixos.
 - Eixo x numérico ou em radianos; nomes dos eixos sem itálico, com negrito opcional; janela e dimensões em centímetros.
+- Símbolo y à esquerda do eixo vertical e x abaixo do horizontal. Passos independentes nos eixos (incluindo pi/2), com espaçamento automático quando vazios. Graduações muito densas omitem rótulos para evitar sobreposição.
+- Espessura independente por curva entre 0,25 e 6 pt, preservada nas exportações.
 - Domínio e opção de mostrar equação junto de cada expressão. Malha opcional; traços finos e fonte Calibri quando instalada (Arial/sans-serif como alternativa). A Calibri não é redistribuída no projeto.
 - Exportação **SVG vetorial em centímetros e PNG a 300 dpi com fundo transparente**, sem marca d’água. O PNG inclui metadados de resolução física.
 - Use `x^2`, `2x`, `sen(x)`, `cos(x)`, `tan(x)`, `sqrt(x)`, `ln(x)`, `log(x)`, `exp(x)`, `abs(x)` ou `|x|`. `log` usa base 10; `ln`, base e. Aceita pi e vírgula decimal. Por exemplo: `2sen(x) + 1`.
@@ -63,7 +68,7 @@ npm test
 
 A geração usa esbuild 0.28.2 pelo npm e pode precisar de internet na primeira execução. O site pronto não depende de serviços externos.
 
-Os 26 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
+Os 32 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
 
 ## Estrutura
 
@@ -74,7 +79,8 @@ Os 26 grupos de testes verificam cálculos, distribuições, planificações, co
 - `assets/function-math.js`: famílias e analisador de expressões.
 - `assets/functions-lab.js`: interface de funções e editor livre.
 - `assets/plot.js`: traçado, coordenadas e exportação.
-- `assets/plot-utils.js`: zoom ancorado no ponteiro, centímetros e resolução física do PNG.
+- `assets/plot-utils.js`: zoom, translação, centímetros e resolução física do PNG.
+- `assets/graph-analysis.js`: interseções numéricas para o ímã.
 - `assets/app.bundle.js`: arquivo gerado; não editar diretamente.
 - `assets/style.css`, `fonts.css` e arquivos TTF: estilo e fontes locais.
 - `tests/`: testes matemáticos e de exportação.

@@ -75,3 +75,14 @@ export function pngWithDpi(bytes, dpi = 300) {
   }
   return out;
 }
+
+export function panWindow(view, dx, dy) {
+  dx = Math.max(-10000 - view.xmin, Math.min(10000 - view.xmax, dx));
+  dy = Math.max(-10000 - view.ymin, Math.min(10000 - view.ymax, dy));
+  return {
+    xmin: view.xmin + dx,
+    xmax: view.xmax + dx,
+    ymin: view.ymin + dy,
+    ymax: view.ymax + dy,
+  };
+}
