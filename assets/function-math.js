@@ -77,17 +77,28 @@ export function makeCurve(type = "quadratica", index = 0) {
   if (type === "trigonometrica") Object.assign(c, { a: 0, b: 1, c: 1, d: 0 });
   return c;
 }
+export function makeExpression(index = 0) {
+  return {
+    expression: "",
+    color: PALETTE[index % PALETTE.length][0],
+    visible: true,
+    showEquation: false,
+    min: "",
+    max: "",
+  };
+}
 export function defaultFunctions() {
   return {
     mode: "families",
     active: 0,
     curves: [makeCurve()],
+    comparisons: [makeExpression(2)],
     xmin: -10,
     xmax: 10,
     ymin: -6,
     ymax: 6,
     free: {
-      equations: [{ expression: "x^2 / 4", color: "#111111", visible: true }],
+      equations: [makeExpression()],
       points: [],
       xmin: -5,
       xmax: 5,
@@ -95,6 +106,9 @@ export function defaultFunctions() {
       ymax: 8,
       width: 1000,
       height: 700,
+      widthCm: 14,
+      heightCm: 9,
+      axesBold: false,
       xlabel: "x",
       ylabel: "y",
       radians: false,
@@ -288,7 +302,10 @@ const funcs = {
   log: Math.log10,
   exp: Math.exp,
 };
-export function compileExpression(source) {
+export function compileExpression(source, parameters = {}) {
+  const parameterNames = ["a", "b", "c", "d"].filter((k) =>
+    Object.hasOwn(parameters, k),
+  );
   if (typeof source !== "string" || !source.trim())
     throw Error("Digite uma expressão.");
   if (source.length > 240) throw Error("Use até 240 caracteres por expressão.");
@@ -304,6 +321,7 @@ export function compileExpression(source) {
     .replaceAll("²", "^2")
     .replaceAll("³", "^3")
     .replace(/(\d),(\d)/g, "$1.$2");
+  if (parameterNames.length) text = text.replace(/([abcd])x\b/g, "$1*x");
   // |x| notation; nested bars should be expressed with abs().
   let opening = true;
   text = text.replace(/\|/g, () => {
@@ -326,7 +344,11 @@ export function compileExpression(source) {
       pos += m[0].length;
     } else if ((m = sub.match(/^[a-z]+/))) {
       const word = m[0];
-      if (!["x", "pi", "e", ...Object.keys(funcs)].includes(word))
+      if (
+        !["x", "pi", "e", ...parameterNames, ...Object.keys(funcs)].includes(
+          word,
+        )
+      )
         throw Error(`Símbolo não reconhecido: ${word}.`);
       tokens.push({ type: "name", v: word });
       pos += word.length;
@@ -343,7 +365,8 @@ export function compileExpression(source) {
         prev &&
         (prev.type === "num" ||
           prev.type === ")" ||
-          (prev.type === "name" && ["x", "pi", "e"].includes(prev.v))),
+          (prev.type === "name" &&
+            ["x", "pi", "e", ...parameterNames].includes(prev.v))),
       starts =
         token.type === "num" || token.type === "name" || token.type === "(";
     if (ends && starts) expanded.push({ type: "*" });
@@ -363,6 +386,7 @@ export function compileExpression(source) {
     else if (t.type === "num") node = { op: "num", v: t.v };
     else if (t.type === "name") {
       if (["x", "pi", "e"].includes(t.v)) node = { op: t.v };
+      else if (parameterNames.includes(t.v)) node = { op: "parameter", v: t.v };
       else {
         if (peek() !== "(") throw Error(`Use ${t.v}(…).`);
         take();
@@ -390,6 +414,8 @@ export function compileExpression(source) {
     switch (n.op) {
       case "num":
         return n.v;
+      case "parameter":
+        return Number(parameters[n.v]);
       case "x":
         return x;
       case "pi":
@@ -467,6 +493,20 @@ export function sanitizeFunctions(raw) {
     out.ymin = -6;
     out.ymax = 6;
   }
+  const readExpression = (c, i) => {
+    c = c && typeof c === "object" ? c : {};
+    return {
+      expression: String(c.expression ?? "").slice(0, 240),
+      color: PALETTE.some(([v]) => v === c.color) ? c.color : PALETTE[i % 8][0],
+      visible: c.visible !== false,
+      showEquation: c.showEquation === true,
+      min: String(c.min ?? "").slice(0, 40),
+      max: String(c.max ?? "").slice(0, 40),
+    };
+  };
+  if (Array.isArray(raw.comparisons))
+    out.comparisons = raw.comparisons.slice(0, 5).map(readExpression);
+  if (!out.comparisons.length) out.comparisons = [makeExpression(2)];
   const f = raw.free;
   if (f && typeof f === "object") {
     for (const k of ["xmin", "xmax", "ymin", "ymax"])
@@ -480,15 +520,14 @@ export function sanitizeFunctions(raw) {
           k === "width" ? 2000 : 1600,
         ),
       );
+    out.free.widthCm = finite(f.widthCm, 14, 6, 30);
+    out.free.heightCm = finite(f.heightCm, 9, 4, 25);
+    out.free.axesBold = f.axesBold === true;
     for (const k of ["xlabel", "ylabel"])
       if (typeof f[k] === "string") out.free[k] = f[k].slice(0, 30);
     for (const k of ["radians", "grid", "legend"]) out.free[k] = f[k] === true;
     if (Array.isArray(f.equations) && f.equations.length)
-      out.free.equations = f.equations.slice(0, 5).map((c, i) => ({
-        expression: String(c.expression || "x").slice(0, 240),
-        color: PALETTE.some(([v]) => v === c.color) ? c.color : PALETTE[i][0],
-        visible: c.visible !== false,
-      }));
+      out.free.equations = f.equations.slice(0, 5).map(readExpression);
     if (Array.isArray(f.points))
       out.free.points = f.points
         .slice(0, 12)

@@ -63,7 +63,7 @@ export function mountGeometry(ctx) {
     "Geometria espacial",
     "Abra, construa e investigue os sólidos em movimento.",
     controls,
-    `<div class="stage-top"><strong id="solid-name"></strong><span class="pill">${s.view === "net" ? "PLANIFICAÇÃO DINÂMICA" : s.view === "revolution" ? "SÓLIDO DE REVOLUÇÃO" : "LABORATÓRIO INTERATIVO"}</span></div><div class="stage geometry-stage"><span class="view-label" id="view-label"></span><svg id="solid" viewBox="0 0 800 500" role="img" aria-label="Sólido geométrico" tabindex="0"></svg><span class="stage-note">Arraste para girar · Setas do teclado para rotação</span><div class="stage-tools"><button id="zoom-out" aria-label="Diminuir sólido">−</button><button id="camera-reset" aria-label="Restaurar câmera">↺</button><button id="zoom-in" aria-label="Ampliar sólido">+</button><button id="export" aria-label="Baixar figura SVG">↓</button></div></div><div class="metrics" id="solid-metrics"></div><div class="formula-panel" id="solid-formulas"></div>`,
+    `<div class="stage-top"><strong id="solid-name"></strong><span class="pill">${s.view === "net" ? "PLANIFICAÇÃO DINÂMICA" : s.view === "revolution" ? "SÓLIDO DE REVOLUÇÃO" : "LABORATÓRIO INTERATIVO"}</span></div><div class="stage geometry-stage"><span class="view-label" id="view-label"></span><svg id="solid" viewBox="0 0 800 500" role="img" aria-label="Sólido geométrico" tabindex="0"></svg><span class="stage-note">Arraste para girar · Role para dar zoom</span><div class="stage-tools"><button id="zoom-out" aria-label="Diminuir sólido">−</button><button id="camera-reset" aria-label="Restaurar câmera">↺</button><button id="zoom-in" aria-label="Ampliar sólido">+</button><button id="export" aria-label="Baixar figura SVG">↓</button></div></div><div class="metrics" id="solid-metrics"></div><div class="formula-panel" id="solid-formulas"></div>`,
   );
   $("#lab-controls").classList.add("extended-controls");
   const bind = (id, key, suffix = "", after) => {
@@ -175,6 +175,20 @@ export function mountGeometry(ctx) {
   };
   $("#export").onclick = () => downloadSVG("solid", "geometria-" + s.type);
   const el = $("#solid");
+  const wheelZoom = (e) => {
+    e.preventDefault();
+    const delta =
+      e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    s.zoom = Math.max(
+      0.4,
+      Math.min(
+        2,
+        s.zoom * Math.exp(Math.max(-0.5, Math.min(0.5, -delta * 0.002))),
+      ),
+    );
+    draw();
+  };
+  el.addEventListener("wheel", wheelZoom, { passive: false });
   let pointer = null;
   el.onpointerdown = (e) => {
     pointer = [e.clientX, e.clientY];
@@ -289,7 +303,7 @@ export function mountGeometry(ctx) {
   }
   draw();
   common();
-  return () => {};
+  return () => el.removeEventListener("wheel", wheelZoom);
 }
 function renderScene(s, svg, fmt) {
   let { faces, poly } = solidScene(s),

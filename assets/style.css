@@ -1988,3 +1988,445 @@ body.presenting .controls {
 .table-scroll {
   overflow: auto;
 }
+
+/* Compact function workspace: stays usable at normal browser zoom on projectors. */
+body:has(.function-lab) .header {
+  height: 74px;
+}
+.function-lab {
+  padding: 14px 3.5% 30px;
+}
+.function-lab .breadcrumb {
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.function-lab .lab-title {
+  margin-bottom: 12px;
+  gap: 12px;
+}
+.function-lab .lab-title h1 {
+  font-size: 27px;
+  margin-bottom: 3px;
+}
+.function-lab .lab-title p {
+  font-size: 12px;
+}
+.function-lab .lab-actions button {
+  padding: 6px 10px;
+  min-height: 34px;
+  font-size: 11px;
+}
+.function-lab .function-tabs {
+  margin-bottom: 10px;
+  gap: 6px;
+}
+.function-lab .function-tabs button {
+  padding: 8px 14px;
+  min-height: 34px;
+  font-size: 12px;
+}
+.function-lab .workspace {
+  grid-template-columns: 300px minmax(0, 1fr);
+  align-items: stretch;
+}
+.function-lab .function-controls {
+  height: clamp(420px, calc(100dvh - 242px), 760px);
+  max-height: none;
+  padding: 16px;
+  overflow-y: auto;
+}
+.function-lab .stage-column {
+  height: clamp(420px, calc(100dvh - 242px), 760px);
+  min-height: 0;
+}
+.function-lab .control-title {
+  margin-bottom: 8px;
+  font-size: 10px;
+}
+.function-lab .field {
+  margin: 8px 0;
+  font-size: 11px;
+}
+.function-lab .field > span {
+  margin-bottom: 5px;
+}
+.function-lab .field input:not([type="range"]),
+.function-lab select {
+  min-height: 34px;
+  padding: 7px 8px;
+  font-size: 12px;
+}
+.function-lab .main-equation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+}
+.function-lab .symbolic-formula {
+  flex: 1;
+  margin: 0;
+  padding: 6px 8px;
+  font-size: 14px;
+}
+.function-lab .check {
+  min-height: 28px;
+  font-size: 11px;
+  gap: 6px;
+  margin: 0;
+  white-space: nowrap;
+}
+.function-lab .check input {
+  width: 14px;
+  height: 14px;
+}
+.function-lab .parameter {
+  margin: 9px 0;
+}
+.function-lab .parameter > label {
+  margin-bottom: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.function-lab .parameter > label b {
+  font-size: 14px;
+  min-width: 21px;
+}
+.function-lab .parameter-values {
+  grid-template-columns: minmax(60px, 1fr) 61px 31px;
+  gap: 6px;
+}
+.function-lab .parameter-values input[type="number"],
+.function-lab .parameter-values button {
+  min-height: 29px;
+  padding: 4px;
+  font-size: 11px;
+}
+.function-lab .compact-pause {
+  min-height: 25px;
+  font-size: 10px;
+  padding: 3px 0;
+}
+.function-lab .control-section {
+  margin-top: 12px;
+  padding-top: 11px;
+}
+.function-lab .control-section h2,
+.function-lab .control-section summary {
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+.function-lab .small {
+  font-size: 10.5px;
+  line-height: 1.5;
+  margin: 5px 0;
+}
+.function-lab .wide-button {
+  font-size: 11px;
+  min-height: 32px;
+  padding: 6px 10px;
+}
+.function-lab .wide-button span {
+  font-size: 10px;
+  color: var(--muted);
+  margin-left: 10px;
+}
+.function-lab .expression-row {
+  padding: 8px 0;
+  border-bottom: 1px solid #e7ebe4;
+}
+.function-lab .expression-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+}
+.function-lab .expression-field > span {
+  flex-shrink: 0;
+  font-family: Calibri, "DM Sans", sans-serif;
+}
+.function-lab .expression-field input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #dbe2d8;
+  border-radius: 6px;
+  padding: 7px 8px;
+  min-height: 34px;
+  font:
+    13px Calibri,
+    "DM Sans",
+    sans-serif;
+  color: var(--ink);
+}
+.function-lab .expression-field input::placeholder {
+  color: #8a9389;
+  font-size: 11px;
+}
+.function-lab .expression-field input[aria-invalid="true"] {
+  border-color: #b44735;
+}
+.function-lab .expression-switches {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding-left: 3px;
+}
+.function-lab .expression-switches > button {
+  margin-left: auto;
+  padding: 0 4px;
+  min-height: 25px;
+  min-width: 24px;
+  border: 0;
+  background: none;
+}
+.function-lab .equation-domain {
+  display: grid;
+  grid-template-columns: 65px minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  align-items: center;
+}
+.function-lab .equation-domain > span {
+  font-size: 10px;
+  color: var(--muted);
+}
+.function-lab .equation-domain .field {
+  margin: 2px 0;
+}
+.function-lab .equation-domain .field > span {
+  font-size: 9px;
+  margin-bottom: 3px;
+}
+.function-lab .equation-domain input {
+  min-height: 28px !important;
+  padding: 4px 6px !important;
+}
+.function-lab .syntax-help {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 9px;
+}
+.function-lab [hidden] {
+  display: none !important;
+}
+.plot-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  padding: 9px 12px;
+  border-bottom: 1px solid #edf0eb;
+  background: #fff;
+  min-height: 48px;
+  z-index: 3;
+}
+.plot-curves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.plot-curve-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 4px 7px;
+  min-height: 28px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.plot-curve-chip i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: block;
+  box-shadow: 0 0 0 1px #0001;
+}
+.plot-curve-chip.muted {
+  opacity: 0.45;
+}
+.plot-curve-chip[aria-expanded="true"] {
+  background: #edf3e9;
+}
+.plot-zoom {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.plot-zoom button {
+  width: 30px;
+  min-height: 29px;
+  padding: 2px;
+  font-size: 16px;
+  font-weight: 400;
+}
+.plot-palette {
+  position: absolute;
+  top: 43px;
+  left: 12px;
+  display: flex;
+  gap: 4px;
+  padding: 7px;
+  border: 1px solid #cdd8c8;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 7px 20px #20383115;
+  z-index: 5;
+}
+.plot-palette[hidden] {
+  display: none;
+}
+.plot-palette button {
+  min-height: 29px;
+  width: 29px;
+  padding: 5px;
+  border: 0;
+}
+.plot-palette i {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+.graph-summary {
+  min-height: 29px;
+  padding: 7px 15px 3px;
+  font-size: 11px;
+  color: #55665c;
+  font-variant-numeric: tabular-nums;
+}
+.function-lab .stage.graph-stage {
+  flex: 1;
+  min-height: 0;
+  padding: 0 7px 18px;
+  background: #fff;
+  overflow: hidden;
+}
+.function-lab .stage.graph-stage svg {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: none;
+  cursor: crosshair;
+}
+.graph-gesture {
+  position: absolute;
+  bottom: 4px;
+  left: 16px;
+  font-size: 9px;
+  color: #7c887e;
+  pointer-events: none;
+}
+.function-lab .export-toolbar {
+  padding: 7px 12px;
+  gap: 6px;
+  min-height: 43px;
+  border-top: 1px solid #edf0eb;
+  border-bottom: 0;
+}
+.function-lab .export-toolbar button {
+  font-size: 11px;
+  min-height: 28px;
+  padding: 4px 11px;
+}
+.function-notes {
+  margin-top: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+}
+.function-notes > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+.function-notes p {
+  margin: 9px 0;
+}
+.function-notes .data-table {
+  margin-top: 10px;
+}
+.function-lab .insight {
+  margin-top: 12px;
+  padding: 15px 20px;
+}
+.function-lab .insight p {
+  font-size: 12px;
+}
+body.presenting .function-lab {
+  padding: 12px 18px;
+}
+body.presenting .function-lab .function-controls,
+body.presenting .function-lab .stage-column {
+  height: calc(100dvh - 112px);
+  max-height: none;
+}
+body.presenting .function-lab .stage.graph-stage {
+  min-height: 0;
+}
+body.presenting .function-lab .function-notes {
+  display: none;
+}
+@media (max-width: 900px) and (min-width: 641px) {
+  .function-lab .workspace {
+    grid-template-columns: 260px minmax(0, 1fr);
+  }
+  .function-lab .function-controls {
+    padding: 12px;
+  }
+}
+@media (max-width: 640px) {
+  body:has(.function-lab) .header {
+    height: auto;
+  }
+  .function-lab {
+    padding: 12px;
+  }
+  .function-lab .function-tabs {
+    display: flex;
+  }
+  .function-lab .function-tabs button {
+    flex: 1;
+    padding: 8px;
+    font-size: 11px;
+  }
+  .function-lab .function-controls {
+    height: auto;
+    max-height: none;
+  }
+  .function-lab .stage-column {
+    height: 430px;
+  }
+  .function-lab .plot-toolbar {
+    padding: 7px;
+  }
+  .function-lab .main-equation .check,
+  .function-lab .expression-switches .check {
+    display: flex;
+  }
+  .function-lab .graph-summary {
+    font-size: 10px;
+  }
+  .function-lab .stage.graph-stage svg text {
+    font-size: inherit;
+  }
+  .function-lab .lab-title {
+    align-items: flex-start;
+  }
+  .function-lab .lab-title p {
+    display: none;
+  }
+  .function-lab .lab-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .function-lab .function-tabs {
+    margin-top: 8px;
+  }
+}

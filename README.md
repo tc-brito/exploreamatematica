@@ -26,25 +26,25 @@ Abra `http://127.0.0.1:4173`. Para outra porta: `PORT=4175 npm start`.
 - Cilindro, cone e esfera gerados por rotação de uma figura plana, entre 0° e 360°, em torno do eixo x ou y.
 - Esfera: calota/segmento esférico e cunha, com raio, altura ou ângulo ajustáveis.
 - Vistas frontal, traseira, laterais direita/esquerda, superior, inferior e perspectiva 3D. A escolha funciona também na planificação e na revolução; arrastar ou usar as setas ativa a rotação livre.
-- Rotação por arraste ou setas, zoom, faces, arestas, vértices, medidas, geratriz e exportação SVG.
+- Rotação por arraste ou setas, zoom pelo scroll do mouse ou botões, faces, arestas, vértices, medidas, geratriz e exportação SVG.
 
 ### Funções
 
 - Ordem: afim, quadrática, exponencial, logística, logarítmica, trigonométrica e modular.
-- Até quatro equações independentes, com escolha de família, cor, visibilidade, coeficientes e domínio.
+- Família como primeira escolha, função principal com coeficientes e até cinco campos de comparação. Expressões podem usar a, b, c e d para acompanhar os controles. Cores junto ao gráfico e visibilidade individual.
 - Botão de reprodução/pausa em cada coeficiente. A animação para ao trocar de exploração ou ocultar a aba.
-- Coordenadas ao passar o ponteiro e consulta pelo teclado com o campo **Consultar x**.
+- Coordenadas ao passar o ponteiro, zoom pelo scroll ou botões e janela manual dos eixos x/y. Interface compacta para projeção a 100%; controles laterais com rolagem própria.
 - Domínio natural por padrão. A restrição opcional do domínio é diferente da janela visível do gráfico.
 - Seno, cosseno e tangente na forma **a + b · trig(cx + d)**. Eixo x em radianos; máximos/mínimos e assíntotas tracejados; fórmula e cálculo do período.
 - A função logística também está acessível por um atalho na função exponencial.
 - Informações algébricas e tabela de valores da equação selecionada.
 
-### Construção livre
+### Gráfico para avaliações
 
 - Até cinco expressões, oito cores, pontos com rótulos e projeções nos eixos.
-- Eixo x numérico ou em radianos; nomes dos eixos; janela e dimensões da figura.
-- Malha e legenda opcionais; traço limpo com tipografia serifada, adequado a atividades e provas.
-- Exportação **SVG vetorial e PNG com fundo transparente**, sem marca d’água.
+- Eixo x numérico ou em radianos; nomes dos eixos sem itálico, com negrito opcional; janela e dimensões em centímetros.
+- Domínio e opção de mostrar equação junto de cada expressão. Malha opcional; traços finos e fonte Calibri quando instalada (Arial/sans-serif como alternativa). A Calibri não é redistribuída no projeto.
+- Exportação **SVG vetorial em centímetros e PNG a 300 dpi com fundo transparente**, sem marca d’água. O PNG inclui metadados de resolução física.
 - Use `x^2`, `2x`, `sen(x)`, `cos(x)`, `tan(x)`, `sqrt(x)`, `ln(x)`, `log(x)`, `exp(x)`, `abs(x)` ou `|x|`. `log` usa base 10; `ln`, base e. Aceita pi e vírgula decimal. Por exemplo: `2sen(x) + 1`.
 - Expressões aritméticas passam por um analisador próprio, sem executar JavaScript. Limite de 240 caracteres por expressão e 12 pontos destacados.
 
@@ -63,7 +63,7 @@ npm test
 
 A geração usa esbuild 0.28.2 pelo npm e pode precisar de internet na primeira execução. O site pronto não depende de serviços externos.
 
-Os 20 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo quatro curvas, cinco expressões, coordenadas e exportação PNG.
+Os 26 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
 
 ## Estrutura
 
@@ -74,6 +74,7 @@ Os 20 grupos de testes verificam cálculos, distribuições, planificações, co
 - `assets/function-math.js`: famílias e analisador de expressões.
 - `assets/functions-lab.js`: interface de funções e editor livre.
 - `assets/plot.js`: traçado, coordenadas e exportação.
+- `assets/plot-utils.js`: zoom ancorado no ponteiro, centímetros e resolução física do PNG.
 - `assets/app.bundle.js`: arquivo gerado; não editar diretamente.
 - `assets/style.css`, `fonts.css` e arquivos TTF: estilo e fontes locais.
 - `tests/`: testes matemáticos e de exportação.

@@ -1,3 +1,4 @@
+import { cmToPixels, pngWithDpi, zoomWindow } from "./plot-utils.js";
 import { piLabel } from "./function-math.js";
 export const xml = (s) =>
   String(s).replace(
@@ -22,11 +23,15 @@ function niceStep(span, space) {
 export function graphGeometry(o) {
   const w = o.width || 900,
     h = o.height || 530,
-    font = o.professional ? Math.max(16, Math.min(25, w / 45)) : 16,
-    left = 70,
-    right = 34,
-    top = o.legend ? Math.max(55, 30 + o.curves.length * 23) : 36,
-    bottom = 53,
+    font = o.professional ? 14.6667 : 15,
+    left = o.professional ? 44 : 52,
+    right = o.professional ? 25 : 28,
+    legendCount = o.legend
+      ? o.curves.filter((c) => c.showEquation !== false).length
+      : 0,
+    legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20,
+    top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28,
+    bottom = o.professional ? 34 : 38,
     W = w - left - right,
     H = h - top - bottom,
     X = (x) => left + ((x - o.xmin) / (o.xmax - o.xmin)) * W,
@@ -35,6 +40,7 @@ export function graphGeometry(o) {
     w,
     h,
     font,
+    legendStep,
     left,
     right,
     top,
@@ -139,10 +145,10 @@ export function curvePath(fn, o, breaks = []) {
 export function buildGraph(o) {
   const g = graphGeometry(o),
     { w, h, left, right, top, bottom, W, H, X, Y, font } = g,
-    ink = o.professional ? "#111111" : "#455c4e",
-    grid = o.professional ? "#dedede" : "#e3e8df",
+    ink = o.professional ? "#111111" : "#4f5d59",
+    grid = o.professional ? "#dedede" : "#edf0ed",
     family = o.professional
-      ? "Georgia,Times New Roman,serif"
+      ? "Calibri,Arial,sans-serif"
       : "DM Sans,Arial,sans-serif",
     xAxis = Math.max(top, Math.min(h - bottom, Y(0))),
     yAxis = Math.max(left, Math.min(w - right, X(0)));
@@ -172,11 +178,13 @@ export function buildGraph(o) {
   } else xstep = niceStep(o.xmax - o.xmin, Math.max(3, W / 75));
   const ystep = niceStep(o.ymax - o.ymin, Math.max(3, H / 58)),
     id = "graph-clip";
-  let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.4"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
+  let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
   if (o.legend)
-    o.curves.forEach((c, i) => {
-      html += `<line x1="${left}" x2="${left + 23}" y1="${25 + i * 23}" y2="${25 + i * 23}" stroke="${c.color}" stroke-width="2.5"/><text x="${left + 33}" y="${30 + i * 23}" font-size="${Math.min(font, 17)}">${xml(c.label)}</text>`;
-    });
+    o.curves
+      .filter((c) => c.showEquation !== false)
+      .forEach((c, i) => {
+        html += `<line x1="${left}" x2="${left + 23}" y1="${19 + i * g.legendStep}" y2="${19 + i * g.legendStep}" stroke="${c.color}" stroke-width="1.6"/><text x="${left + 33}" y="${24 + i * g.legendStep}" font-size="${Math.min(font, g.legendStep - 2)}">${xml(c.label)}</text>`;
+      });
   for (
     let i = Math.ceil(o.xmin / xstep);
     i <= Math.floor(o.xmax / xstep) && i - Math.ceil(o.xmin / xstep) < 80;
@@ -203,10 +211,10 @@ export function buildGraph(o) {
     if (Math.abs(y) > ystep * 1e-6)
       html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(decimal(y, 4))}</text>`;
   }
-  html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.4" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.4" marker-end="url(#axis-arrow)"/>`;
+  html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/>`;
   if (o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
     html += `<text x="${yAxis - 10}" y="${xAxis + font + 7}" text-anchor="end">0</text>`;
-  html += `<text x="${w - right + 9}" y="${xAxis - 12}" text-anchor="end" font-style="italic">${xml(o.xlabel || "")}</text><text x="${yAxis + 13}" y="${top - 9}" font-style="italic">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
+  html += `<text x="${w - right + 9}" y="${xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${yAxis + 13}" y="${top - 9}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
   for (const guide of o.guides || []) {
     if (guide.axis === "x" && guide.value >= o.xmin && guide.value <= o.xmax) {
       let x = X(guide.value);
@@ -222,20 +230,20 @@ export function buildGraph(o) {
   }
   for (const c of o.curves)
     if (c.fn)
-      html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? 2.2 : 2.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
+      html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? 1.35 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
   for (const p of o.points || []) {
     if (p.x < o.xmin || p.x > o.xmax || p.y < o.ymin || p.y > o.ymax) continue;
     const x = X(p.x),
       y = Y(p.y);
     if (p.project)
       html += `<path d="M${yAxis} ${y}H${x}V${xAxis}" fill="none" stroke="${ink}" stroke-dasharray="5 4" stroke-width="1"/>`;
-    html += `<circle cx="${x}" cy="${y}" r="4" fill="${ink}"/><text x="${Math.min(w - right - 6, Math.max(left + 6, x + 10))}" y="${Math.max(top + font, y - 12)}" text-anchor="${x > w - right - 120 ? "end" : "start"}">${xml(p.label || `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`)}</text>`;
+    html += `<circle cx="${x}" cy="${y}" r="3" fill="${ink}"/><text x="${Math.min(w - right - 6, Math.max(left + 6, x + 10))}" y="${Math.max(top + font, y - 12)}" text-anchor="${x > w - right - 120 ? "end" : "start"}">${xml(p.label || `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`)}</text>`;
   }
   html += '</g><g id="graph-trace" aria-hidden="true"></g></g>';
   return {
     inner: html,
     geometry: g,
-    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">${html.replace('<g id="graph-trace" aria-hidden="true"></g>', "")}</svg>`,
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${o.widthCm ? o.widthCm + "cm" : w}" height="${o.heightCm ? o.heightCm + "cm" : h}" viewBox="0 0 ${w} ${h}">${html.replace('<g id="graph-trace" aria-hidden="true"></g>', "")}</svg>`,
   };
 }
 export function drawGraph(element, o) {
@@ -325,19 +333,34 @@ export function downloadGraph(options, format = "svg") {
       img = new Image();
     img.onload = () => {
       const canvas = document.createElement("canvas");
-      canvas.width = options.width;
-      canvas.height = options.height;
+      canvas.width = options.widthCm
+        ? cmToPixels(options.widthCm, 300)
+        : options.width;
+      canvas.height = options.heightCm
+        ? cmToPixels(options.heightCm, 300)
+        : options.height;
       const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, 0, 0);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      canvas.toBlob(
-        (blob) =>
-          blob
-            ? save(blob, "png")
-            : reject(Error("Não foi possível exportar o PNG.")),
-        "image/png",
-      );
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          reject(Error("Não foi possível exportar o PNG."));
+          return;
+        }
+        try {
+          save(
+            options.widthCm
+              ? new Blob([pngWithDpi(await blob.arrayBuffer(), 300)], {
+                  type: "image/png",
+                })
+              : blob,
+            "png",
+          );
+        } catch (e) {
+          reject(e);
+        }
+      }, "image/png");
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
@@ -345,4 +368,31 @@ export function downloadGraph(options, format = "svg") {
     };
     img.src = url;
   });
+}
+
+export function attachGraphZoom(element, getOptions, apply) {
+  const wheel = (e) => {
+    const matrix = element.getScreenCTM();
+    if (!matrix) return;
+    e.preventDefault();
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(
+        matrix.inverse(),
+      ),
+      o = getOptions(),
+      g = graphGeometry(o);
+    const x = g.fromX(Math.max(g.left, Math.min(g.w - g.right, p.x))),
+      y = g.fromY(Math.max(g.top, Math.min(g.h - g.bottom, p.y)));
+    const delta =
+      e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1);
+    apply(
+      zoomWindow(
+        o,
+        Math.exp(Math.max(-0.5, Math.min(0.5, delta * 0.0015))),
+        x,
+        y,
+      ),
+    );
+  };
+  element.addEventListener("wheel", wheel, { passive: false });
+  return () => element.removeEventListener("wheel", wheel);
 }

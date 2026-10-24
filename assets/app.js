@@ -929,7 +929,16 @@ function sanitize() {
   clamp(b, "p", 0, 1);
   option(b, "tab", ["pascal", "distribution"]);
 }
+function refreshBranding() {
+  const brand = $(".brand");
+  brand.setAttribute("aria-label", "Explore a Matemática, início");
+  brand.lastElementChild.innerHTML = "explore a<br><strong>matemática</strong>";
+  $(".header nav").innerHTML =
+    '<a href="#inicio">Início</a><a href="#funcoes">Funções</a><a href="#geometria">Geometria</a><a href="#estatistica">Estatística</a><a href="#probabilidade">Probabilidade</a>';
+  $(".footer-brand").innerHTML = "explore a matemática <span>✳</span>";
+}
 function render() {
+  refreshBranding();
   cleanupLab();
   cleanupLab = () => {};
   document.querySelectorAll(".header nav a").forEach((a) => {
