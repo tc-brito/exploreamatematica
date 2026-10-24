@@ -1569,3 +1569,422 @@ body.presenting .controls {
     display: none;
   }
 }
+
+/* Geometry and function exploration: compact controls, generous drawing surface. */
+.workspace:has(.extended-controls) {
+  grid-template-columns: 310px minmax(0, 1fr);
+}
+.extended-controls {
+  max-height: 880px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b4c6ae transparent;
+}
+.extended-controls .small {
+  font-size: 12px;
+}
+.extended-controls .control-section h2 {
+  line-height: 1.5;
+}
+.range-ends,
+.inline-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.range-ends {
+  font-size: 11px;
+  color: var(--muted);
+}
+.dynamic-control {
+  margin-top: 18px;
+}
+.inline-actions button {
+  flex: 1;
+  font-size: 11px;
+  padding: 7px;
+}
+.blue-note {
+  color: #246d9c;
+}
+.purple-note {
+  color: #8551a4;
+}
+.function-tabs {
+  display: flex;
+  gap: 7px;
+  margin: 0 0 18px;
+  flex-wrap: wrap;
+}
+.function-tabs button {
+  padding: 11px 17px;
+  font-size: 13px;
+}
+.function-tabs button.selected {
+  background: var(--forest);
+  color: white;
+  border-color: var(--forest);
+}
+.function-controls {
+  padding: 22px 18px;
+}
+.curve-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.curve-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--curve-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.curve-card.active {
+  background: #f1f5ec;
+  box-shadow: 0 0 0 1px #9db790;
+}
+.curve-select {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 9px 11px 5px;
+}
+.curve-select b {
+  font-size: 13px;
+  color: var(--curve-color);
+}
+.curve-select span {
+  display: block;
+  font-family: Georgia, serif;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+}
+.curve-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 5px 10px;
+  font-size: 11px;
+}
+.curve-actions label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.curve-actions button,
+.point-row button {
+  border: 0;
+  background: transparent;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 3px;
+}
+.curve-actions input {
+  accent-color: var(--forest);
+}
+.wide-button {
+  width: 100%;
+  font-size: 12px;
+  min-height: 40px;
+}
+.parameter {
+  margin: 15px 0;
+}
+.parameter > label {
+  font-size: 12px;
+  display: block;
+  margin-bottom: 7px;
+}
+.parameter > label b {
+  display: inline-block;
+  background: #edf2e8;
+  min-width: 23px;
+  text-align: center;
+  border-radius: 4px;
+  margin-right: 4px;
+  font-family: Georgia, serif;
+  font-size: 16px;
+}
+.parameter-values {
+  display: grid;
+  grid-template-columns: minmax(50px, 1fr) 66px 34px;
+  align-items: center;
+  gap: 7px;
+}
+.parameter-values input[type="range"] {
+  width: 100%;
+  accent-color: var(--forest);
+}
+.parameter-values input[type="number"] {
+  min-width: 0;
+  width: 100%;
+  padding: 6px;
+  min-height: 35px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font-size: 12px;
+}
+.parameter-values button {
+  min-width: 0;
+  min-height: 35px;
+  padding: 4px;
+  font-size: 12px;
+}
+.parameter-values button[aria-pressed="true"] {
+  background: var(--forest);
+  color: white;
+}
+.symbolic-formula {
+  padding: 10px;
+  background: #f7f8f3;
+  border-radius: 6px;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.color-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.color-field select {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  min-height: 37px;
+  padding: 6px 8px;
+}
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.field-grid .field {
+  min-width: 0;
+}
+.field input:not([type]),
+.field input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  min-height: 42px;
+  padding: 8px;
+  color: var(--ink);
+  background: white;
+  font: inherit;
+}
+.field input[aria-invalid="true"] {
+  border-color: #a63e30;
+}
+.error {
+  color: #a1392d;
+}
+.error:empty {
+  display: none;
+}
+.control-section > summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 3px 0 8px;
+}
+.free-equation {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 13px;
+  margin-bottom: 14px;
+}
+.free-equation .field input {
+  font-family: monospace;
+  font-size: 14px;
+}
+.equation-options {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.equation-options .color-field {
+  flex: 1;
+}
+.equation-options .color-field span {
+  display: none;
+}
+.equation-options .check {
+  font-size: 11px;
+  gap: 5px;
+  margin: 0;
+}
+.equation-options > button {
+  padding: 4px 8px;
+  min-height: 36px;
+}
+.point-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 5px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.stage.graph-stage {
+  background: white;
+  background-image: none;
+  min-height: 0;
+  padding: 12px 10px 6px;
+}
+.stage.graph-stage svg {
+  min-height: 0;
+  max-height: none;
+  width: 100%;
+  height: auto;
+  overflow: hidden;
+}
+.graph-inspector {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 24px;
+  background: #f5f7f0;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+.graph-inspector > span {
+  flex: 1;
+  min-width: 170px;
+}
+.graph-inspector > div {
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.graph-inspector .field {
+  width: 105px;
+  margin: 0;
+}
+.graph-inspector .field span {
+  margin-bottom: 4px;
+  font-size: 11px;
+}
+.graph-inspector button {
+  min-height: 42px;
+  font-size: 12px;
+}
+.export-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.export-toolbar span {
+  flex: 1;
+  font-size: 11px;
+  color: var(--muted);
+  min-width: 150px;
+}
+.export-toolbar button {
+  font-size: 12px;
+}
+.formula-panel {
+  overflow-wrap: anywhere;
+}
+@media (min-width: 1100px) {
+  .workspace:has(.function-controls) {
+    grid-template-columns: 330px minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) and (min-width: 641px) {
+  .workspace:has(.extended-controls) {
+    grid-template-columns: 265px minmax(0, 1fr);
+  }
+  .function-controls {
+    padding: 18px 14px;
+  }
+  .graph-inspector,
+  .export-toolbar {
+    padding: 12px;
+  }
+}
+@media (max-width: 640px) {
+  .extended-controls {
+    max-height: none;
+    overflow: visible;
+  }
+  .function-controls .check {
+    display: flex;
+  }
+  .function-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .function-tabs button {
+    text-align: left;
+  }
+  .stage.graph-stage {
+    overflow: auto;
+    align-items: flex-start;
+    padding: 10px 0;
+  }
+  .stage.graph-stage svg {
+    width: 100%;
+    min-width: 560px;
+  }
+  .stage.graph-stage svg text {
+    font-size: inherit;
+  }
+  .graph-inspector,
+  .export-toolbar {
+    padding: 13px 18px;
+  }
+  .graph-inspector > div {
+    width: 100%;
+  }
+  .graph-inspector .field {
+    flex: 1;
+  }
+  .export-toolbar span {
+    width: 100%;
+    flex-basis: 100%;
+  }
+  .extended-controls .segmented {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media print {
+  .function-tabs,
+  .graph-inspector,
+  .export-toolbar {
+    display: none;
+  }
+  .stage.graph-stage svg {
+    min-width: 0;
+  }
+  .stage.graph-stage {
+    overflow: visible;
+  }
+}
+.workspace:has(.extended-controls) .metrics {
+  margin-top: 0;
+}
+.value-table {
+  margin-top: 16px;
+  font-size: 12px;
+}
+.value-table summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.table-scroll {
+  overflow: auto;
+}

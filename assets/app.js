@@ -1,3 +1,7 @@
+import { defaultGeometry, sanitizeGeometry } from "./geometry-model.js";
+import { defaultFunctions, sanitizeFunctions } from "./function-math.js";
+import { mountGeometry } from "./geometry-lab.js";
+import { mountFunctions } from "./functions-lab.js";
 import {
   choose,
   binomial,
@@ -36,16 +40,16 @@ const svgArt = (type) =>
   `<svg viewBox="0 0 210 190" aria-hidden="true">${icons[type]}</svg>`;
 const topics = [
   [
+    "funcoes",
+    "Funções",
+    "Mude os parâmetros. Veja cada transformação no gráfico.",
+    ["7 famílias", "Editor de gráficos"],
+  ],
+  [
     "geometria",
     "Geometria espacial",
     "Gire, desmonte e descubra o que dá forma ao espaço.",
     ["6 sólidos", "Planificações"],
-  ],
-  [
-    "funcoes",
-    "Funções",
-    "Mude os parâmetros. Veja cada transformação no gráfico.",
-    ["4 famílias", "Gráficos"],
   ],
   [
     "estatistica",
@@ -61,22 +65,8 @@ const topics = [
   ],
 ];
 const state = {
-  geometry: {
-    type: "cubo",
-    a: 4,
-    h: 6,
-    b: 3,
-    faces: true,
-    edges: true,
-    vertices: false,
-    measure: false,
-    guide: false,
-    view: "solid",
-    rx: 0.38,
-    ry: 0.56,
-    zoom: 1,
-  },
-  functions: { type: "quadratica", a: 1, b: 0, c: 0, zoom: 1, compare: false },
+  geometry: defaultGeometry(),
+  functions: defaultFunctions(),
   stats: { text: "4; 5; 5; 6; 7; 7; 8; 8; 9; 11", sample: false },
   prob: {
     tab: "simulacao",
@@ -89,6 +79,7 @@ const state = {
   conditional: { a: 30, b: 20, c: 10, d: 40, reverse: false },
   binomial: { n: 5, p: 0.5, tab: "pascal", k: 2 },
 };
+let cleanupLab = () => {};
 let current = "inicio",
   toastTimer,
   controlsOpen = false;
@@ -125,7 +116,7 @@ const plans = {
       "Se a aresta do cubo dobrar, a área e o volume também dobram? Formule uma hipótese antes de mover o controle.",
     steps: [
       "Antecipar: peça que cada grupo registre quanto a área e o volume devem crescer ao dobrar a aresta.",
-      "Experimentar: comece com a = 2 e passe para a = 4. Compare 24 e 96 unidades²; 8 e 64 unidades³.",
+      "Experimentar: comece com a = 2 e passe para a = 4. Compare 24 e 96 u.a.; 8 e 64 u.v.",
       "Explicar: relacione os fatores 4 e 8 com as dimensões 2 e 3 das fórmulas. Abra a planificação para contar as faces.",
     ],
     answer:
@@ -223,8 +214,12 @@ function lessonPlan() {
       answer,
     };
   }
-  if (current === "funcoes" && state.functions.type !== "quadratica") {
-    const type = state.functions.type,
+  if (
+    current === "funcoes" &&
+    state.functions.mode !== "free" &&
+    state.functions.curves[state.functions.active].type !== "quadratica"
+  ) {
+    const type = state.functions.curves[state.functions.active].type,
       lessons = {
         afim: [
           "Inclinação e ponto de partida",
@@ -241,11 +236,16 @@ function lessonPlan() {
         trigonometrica: [
           "O ritmo de uma onda",
           "Qual parâmetro muda a altura da onda? Qual muda o intervalo entre as repetições?",
-          "Compare a = 1 e a = 2; depois mantenha a = 1 e compare b = 1 e b = 2.",
-          "A amplitude é |a| e o período é 2π/|b|, para a e b não nulos. A fase c desloca a onda horizontalmente em −c/b.",
+          "Compare b = 1 e b = 2; depois mantenha b = 1 e compare c = 1 e c = 2.",
+          "Em a + b sen(cx + d), a amplitude é |b| e o período é 2π/|c| para b e c não nulos. A fase d desloca a onda horizontalmente em −d/c. Na tangente, o período é π/|c|.",
         ],
       };
-    const [title, question, experiment, answer] = lessons[type];
+    const [title, question, experiment, answer] = lessons[type] || [
+      "Transformações e domínio",
+      "Como a curva responde a cada coeficiente? Quais valores de x são permitidos?",
+      "Adicione uma segunda equação e altere um coeficiente por vez.",
+      "Compare o domínio, a posição da curva e seu comportamento. Registre as conclusões com a expressão algébrica.",
+    ];
     return {
       ...plans.funcoes,
       title,
@@ -262,7 +262,7 @@ function lessonPlan() {
 }
 function shell(title, subtitle, controls, content, subnav = "") {
   const plan = lessonPlan();
-  return `<div class="lab"><div class="breadcrumb"><a href="#inicio">Explorar</a><span>/</span><span>${title}</span></div><div class="lab-title"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="lab-actions"><button id="reset">↺ Reiniciar</button><button id="share">↗ Compartilhar</button><button id="present">⛶ ${document.body.classList.contains("presenting") ? "Sair da apresentação" : "Apresentar"}</button></div></div>${subnav}<div class="workspace ${controlsOpen ? "controls-open" : ""}"><button class="mobile-controls" id="toggle-controls" aria-expanded="${controlsOpen}" aria-controls="lab-controls">Ajustar exploração <span>${controlsOpen ? "−" : "＋"}</span></button><aside id="lab-controls" class="controls" aria-label="Controles do laboratório">${controls}</aside><section class="stage-column" aria-label="Visualização e resultados">${content}</section></div><section class="insight"><h2>✳ Para investigar<br>com a turma</h2><p>${plan.question}</p><button id="lesson">Roteiro de aula ↗</button></section><section class="teacher-notes" id="lesson-notes" hidden><div class="eyebrow">${plan.time} · INVESTIGAÇÃO GUIADA</div><h3>${plan.title}</h3><ol>${plan.steps.map((s) => `<li>${s}</li>`).join("")}</ol><details><summary>Notas para o professor</summary><p>${plan.answer}</p></details><button id="print">Imprimir roteiro</button></section></div>`;
+  return `<div class="lab"><div class="breadcrumb"><a href="#inicio">Início</a><span>/</span><span>${title}</span></div><div class="lab-title"><div><h1>${title}</h1><p>${subtitle}</p></div><div class="lab-actions"><button id="reset">↺ Reiniciar</button><button id="share">↗ Compartilhar</button><button id="present">⛶ ${document.body.classList.contains("presenting") ? "Sair da apresentação" : "Apresentar"}</button></div></div>${subnav}<div class="workspace ${controlsOpen ? "controls-open" : ""}"><button class="mobile-controls" id="toggle-controls" aria-expanded="${controlsOpen}" aria-controls="lab-controls">Ajustar exploração <span>${controlsOpen ? "−" : "＋"}</span></button><aside id="lab-controls" class="controls" aria-label="Controles do laboratório">${controls}</aside><section class="stage-column" aria-label="Visualização e resultados">${content}</section></div><section class="insight"><h2>✳ Para investigar<br>com a turma</h2><p>${plan.question}</p><button id="lesson">Roteiro de aula ↗</button></section><section class="teacher-notes" id="lesson-notes" hidden><div class="eyebrow">${plan.time} · INVESTIGAÇÃO GUIADA</div><h3>${plan.title}</h3><ol>${plan.steps.map((s) => `<li>${s}</li>`).join("")}</ol><details><summary>Notas para o professor</summary><p>${plan.answer}</p></details><button id="print">Imprimir roteiro</button></section></div>`;
 }
 function common() {
   $("#toggle-controls").onclick = () => {
@@ -273,31 +273,8 @@ function common() {
       "Ajustar exploração <span>" + (open ? "−" : "＋") + "</span>";
   };
   $("#reset").onclick = () => {
-    if (current === "geometria")
-      Object.assign(state.geometry, {
-        type: "cubo",
-        a: 4,
-        h: 6,
-        b: 3,
-        rx: 0.38,
-        ry: 0.56,
-        zoom: 1,
-        view: "solid",
-        faces: true,
-        edges: true,
-        vertices: false,
-        measure: false,
-        guide: false,
-      });
-    if (current === "funcoes")
-      Object.assign(state.functions, {
-        type: "quadratica",
-        a: 1,
-        b: 0,
-        c: 0,
-        zoom: 1,
-        compare: false,
-      });
+    if (current === "geometria") state.geometry = defaultGeometry();
+    if (current === "funcoes") state.functions = defaultFunctions();
     if (current === "estatistica")
       Object.assign(state.stats, {
         text: "4; 5; 5; 6; 7; 7; 8; 8; 9; 11",
@@ -338,380 +315,19 @@ function common() {
   $("#print").onclick = () => window.print();
 }
 function geometry() {
-  let s = state.geometry,
-    curved = ["cone", "cilindro", "esfera"].includes(s.type);
-  let controls = `<div class="control-title">Seu sólido <span>◇</span></div>${select(
-    "shape",
-    "Escolha o sólido",
-    [
-      ["cubo", "Cubo"],
-      ["prisma", "Prisma retangular"],
-      ["piramide", "Pirâmide quadrangular"],
-      ["cilindro", "Cilindro"],
-      ["cone", "Cone"],
-      ["esfera", "Esfera"],
-    ],
-    s.type,
-  )}<div class="control-section"><h2>Dimensões · unidades</h2>${range("dim-a", curved ? "Raio (r)" : s.type === "cubo" ? "Aresta (a)" : "Lado da base (a)", s.a, 1, 10, 0.5)}${!["cubo", "esfera"].includes(s.type) ? range("dim-h", "Altura (h)", s.h, 1, 12, 0.5) : ""}${s.type === "prisma" ? range("dim-b", "Largura da base (b)", s.b, 1, 10, 0.5) : ""}</div><div class="control-section"><h2>Visualizar</h2>${check("faces", curved ? "Superfícies" : "Faces", s.faces)}${!curved ? check("edges", "Arestas", s.edges) + check("vertices", "Vértices", s.vertices) : ""}${check("measure", "Medidas", s.measure)}${["cone", "cilindro", "piramide"].includes(s.type) ? check("guide", s.type === "piramide" ? "Apótema lateral (ℓ)" : "Geratriz (g)", s.guide) : ""}</div><div class="control-section"><h2>Explore a estrutura</h2><div class="segmented"><button data-view="solid" class="${s.view === "solid" ? "selected" : ""}">Sólido 3D</button><button data-view="net" ${s.type === "esfera" ? 'disabled title="A esfera não possui planificação exata"' : ""} class="${s.view === "net" ? "selected" : ""}">Planificação</button><button data-view="exploded" ${s.type === "esfera" ? "disabled" : ""} class="${s.view === "exploded" ? "selected" : ""}">Vista explodida</button><button id="front">Vista frontal</button></div>${s.type === "esfera" ? '<p class="small">A esfera não tem planificação plana exata sem deformação.</p>' : ""}</div>`;
-  $("#main").innerHTML = shell(
-    "Geometria espacial",
-    "Uma nova perspectiva para cada descoberta.",
-    controls,
-    `<div class="stage-top"><strong id="solid-name"></strong><span class="pill">LABORATÓRIO INTERATIVO</span></div><div class="stage"><span class="view-label" id="view-label"></span><svg id="solid" viewBox="0 0 800 480" role="img" aria-label="Sólido geométrico interativo" tabindex="0"></svg><span class="stage-note" id="solid-hint">Arraste para girar · Use as setas do teclado</span><div class="stage-tools"><button id="zoom-out" aria-label="Diminuir sólido">−</button><button id="camera-reset" aria-label="Restaurar câmera">↺</button><button id="zoom-in" aria-label="Ampliar sólido">+</button><button id="export" aria-label="Baixar imagem SVG">↓</button></div></div><div class="metrics" id="solid-metrics"></div><div class="formula-panel" id="solid-formulas"></div>`,
-  );
-  $("#shape").onchange = (e) => {
-    s.type = e.target.value;
-    if (s.type === "esfera") s.view = "solid";
-    render();
-  };
-  ["a", "h", "b"].forEach((k) => {
-    if ($("#dim-" + k)) bindRange("dim-" + k, s, k, drawSolid);
+  cleanupLab = mountGeometry({
+    $,
+    fmt,
+    range,
+    select,
+    check,
+    metric,
+    shell,
+    common,
+    render,
+    downloadSVG,
+    state,
   });
-  ["faces", "edges", "vertices", "measure", "guide"].forEach((k) => {
-    if ($("#" + k)) {
-      const unavailable = s.view === "net" || (s.view === "exploded" && ["measure", "guide"].includes(k));
-      $("#" + k).disabled = unavailable;
-      $("#" + k).title = unavailable ? "Disponível na visualização Sólido 3D" : "";
-    }
-    if ($("#" + k))
-      $("#" + k).onchange = (e) => {
-        s[k] = e.target.checked;
-        drawSolid();
-      };
-  });
-  document.querySelectorAll("[data-view]").forEach(
-    (b) =>
-      (b.onclick = () => {
-        s.view = b.dataset.view;
-        render();
-      }),
-  );
-  $("#front").onclick = () => {
-    s.rx = 0;
-    s.ry = 0;
-    s.view = "solid";
-    render();
-  };
-  $("#zoom-in").onclick = () => {
-    s.zoom = Math.min(2, s.zoom + 0.15);
-    drawSolid();
-  };
-  $("#zoom-out").onclick = () => {
-    s.zoom = Math.max(0.45, s.zoom - 0.15);
-    drawSolid();
-  };
-  $("#camera-reset").onclick = () => {
-    s.rx = 0.38;
-    s.ry = 0.56;
-    s.zoom = 1;
-    drawSolid();
-  };
-  $("#export").onclick = () => downloadSVG("solid", "solido-" + s.type);
-  let last = null,
-    el = $("#solid");
-  el.onpointerdown = (e) => {
-    if (s.view === "net") return;
-    last = [e.clientX, e.clientY];
-    el.setPointerCapture(e.pointerId);
-  };
-  el.onpointermove = (e) => {
-    if (!last) return;
-    s.ry += (e.clientX - last[0]) * 0.009;
-    s.rx = Math.max(-1.5, Math.min(1.5, s.rx + (e.clientY - last[1]) * 0.009));
-    last = [e.clientX, e.clientY];
-    drawSolid();
-  };
-  el.onpointerup = el.onpointercancel = () => (last = null);
-  el.onkeydown = (e) => {
-    if (
-      !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key) ||
-      s.view === "net"
-    )
-      return;
-    e.preventDefault();
-    s.ry += e.key === "ArrowLeft" ? -0.12 : e.key === "ArrowRight" ? 0.12 : 0;
-    s.rx += e.key === "ArrowUp" ? -0.12 : e.key === "ArrowDown" ? 0.12 : 0;
-    drawSolid();
-  };
-  drawSolid();
-  common();
-}
-const colors = [
-  "#bdd4a7",
-  "#95b48f",
-  "#d4e1ba",
-  "#dfe9cc",
-  "#a9c79d",
-  "#c8dcb3",
-];
-function drawSolid() {
-  const s = state.geometry,
-    m = solidMetrics(s.type, s.a, s.h, s.b),
-    names = {
-      cubo: "Cubo",
-      prisma: "Prisma retangular",
-      piramide: "Pirâmide quadrangular",
-      cilindro: "Cilindro",
-      cone: "Cone",
-      esfera: "Esfera",
-    };
-  $("#solid-name").textContent = names[s.type];
-  $("#view-label").textContent =
-    s.view === "net"
-      ? "Planificação · faces em escala"
-      : s.view === "exploded"
-        ? "Vista explodida · partes afastadas para observação"
-        : "Perspectiva ortográfica";
-  $("#solid-hint").textContent =
-    s.view === "net"
-      ? "Compare a superfície plana com a área total."
-      : "Arraste para girar · Use as setas do teclado";
-  $("#solid").setAttribute(
-    "aria-label",
-    `${names[s.type]}: área ${fmt(m.area)} unidades quadradas; volume ${fmt(m.volume)} unidades cúbicas. ${m.vertices !== null ? m.vertices + " vértices, " + m.edges + " arestas e " + m.faces + " faces." : ""}`,
-  );
-  $("#solid-metrics").innerHTML =
-    metric("Área total", fmt(m.area) + " u²", "A = " + m.formulaA) +
-    metric("Volume", fmt(m.volume) + " u³", "V = " + m.formulaV) +
-    metric(
-      m.vertices !== null ? "Vértices · arestas · faces" : "Superfícies",
-      m.vertices !== null
-        ? `${m.vertices} · ${m.edges} · ${m.faces}`
-        : s.type === "esfera"
-          ? "1 curva"
-          : s.type === "cone"
-            ? "1 plana + 1 curva"
-            : "2 planas + 1 curva",
-      m.vertices !== null ? "Relação de Euler: V − E + F = 2" : "Corpo redondo",
-    );
-  $("#solid-formulas").innerHTML =
-    `<span class="formula">A = ${m.formulaA} &nbsp; · &nbsp; V = ${m.formulaV}</span><p>${m.g ? `${s.type === "piramide" ? "Apótema lateral ℓ" : "Geratriz g"} = ${fmt(m.g)} u. ` : ""}${s.type === "cone" ? "g = √(r² + h²). " : s.type === "piramide" ? "ℓ = √(h² + (a/2)²). " : ""}${s.type === "cubo" ? "Cada face é um quadrado de área a². O volume conta quantos cubos unitários cabem no sólido." : "Sólidos retos e regulares na base. Altere as dimensões e compare as medidas."}</p>`;
-  if (s.view === "net") {
-    drawNet();
-    return;
-  }
-  const model = mesh(s.type, s.a, s.h, s.b),
-    scale =
-      43 *
-      s.zoom *
-      Math.min(
-        1,
-        8 /
-          Math.max(
-            s.a * (s.type === "esfera" ? 2 : 1),
-            ["cubo", "esfera"].includes(s.type) ? s.a : s.h,
-            s.b,
-          ),
-      );
-  const rotate = ([x, y, z]) => {
-      let u = x * Math.cos(s.ry) + z * Math.sin(s.ry),
-        v = -x * Math.sin(s.ry) + z * Math.cos(s.ry);
-      return [
-        u,
-        y * Math.cos(s.rx) - v * Math.sin(s.rx),
-        y * Math.sin(s.rx) + v * Math.cos(s.rx),
-      ];
-    },
-    project = (p) => {
-      let [x, y] = rotate(p);
-      return [400 + x * scale, 235 - y * scale];
-    };
-  let faces = model.faces
-    .map((f, i) => {
-      let pts = f.map((j) => model.vertices[j]),
-        center = pts.reduce(
-          (a, p) => a.map((v, k) => v + p[k] / pts.length),
-          [0, 0, 0],
-        );
-      if (s.view === "exploded") {
-        let offset;
-        if (model.poly) {
-          let length = Math.hypot(...center) || 1;
-          offset = center.map((v) => (v / length) * 1.8);
-        } else {
-          offset =
-            i === 0
-              ? [0, -1.5, 0]
-              : s.type === "cilindro" && i === 1
-                ? [0, 1.5, 0]
-                : [0, 0.3, 0];
-        }
-        pts = pts.map((p) => p.map((v, k) => v + offset[k]));
-      }
-      return {
-        pts,
-        i,
-        z: pts.reduce((a, p) => a + rotate(p)[2] / pts.length, 0),
-      };
-    })
-    .sort((a, b) => a.z - b.z);
-  let html = '<ellipse cx="400" cy="424" rx="140" ry="14" fill="#1e4a3310"/>';
-  faces.forEach(({ pts, i, z }) => {
-    let p = pts
-        .map(project)
-        .map((p) => p.join(","))
-        .join(" "),
-      fill = model.poly
-        ? colors[i % 6]
-        : `hsl(93 26% ${Math.max(48, Math.min(83, 69 + z * 2))}%)`;
-    html += `<polygon points="${p}" fill="${s.faces ? fill : "none"}" ${model.poly ? `stroke="${s.edges ? "#456841" : "none"}" stroke-width="1.6"` : `stroke="${s.faces ? fill : "#456841"}" stroke-width="${s.faces ? 0.4 : 0.2}"`}/>`;
-    if (model.poly && s.vertices)
-      pts.forEach((v) => {
-        let [x, y] = project(v);
-        html += `<circle cx="${x}" cy="${y}" r="4.5" fill="#7557a4" stroke="white" stroke-width="1.4"/>`;
-      });
-  });
-  function line(p, q, label, color = "#a45f2d", dash = "") {
-    let [x, y] = project(p),
-      [u, v] = project(q);
-    return `<path d="M${x} ${y}L${u} ${v}" stroke="${color}" stroke-width="2.6" ${dash ? 'stroke-dasharray="6 5"' : ""}/><text x="${(x + u) / 2 + 12}" y="${(y + v) / 2 - 9}" fill="${color}" font-size="16" font-family="sans-serif" paint-order="stroke" stroke="#fcfdf9" stroke-width="4">${label}</text>`;
-  }
-  if (s.measure && s.view === "solid") {
-    if (["cubo", "prisma", "piramide"].includes(s.type)) {
-      let y = -(s.type === "cubo" ? s.a : s.h) / 2,
-        z = (s.type === "prisma" ? s.b : s.a) / 2;
-      html += line([-s.a / 2, y, z], [s.a / 2, y, z], `a = ${fmt(s.a)}`);
-      if (s.type !== "cubo")
-        html += line(
-          [0, -s.h / 2, 0],
-          [0, s.h / 2, 0],
-          `h = ${fmt(s.h)}`,
-          "#7557a4",
-          true,
-        );
-    } else {
-      html += line(
-        [0, s.type === "esfera" ? 0 : -s.h / 2, 0],
-        [s.a, s.type === "esfera" ? 0 : -s.h / 2, 0],
-        `r = ${fmt(s.a)}`,
-      );
-      if (s.type !== "esfera")
-        html += line(
-          [0, -s.h / 2, 0],
-          [0, s.h / 2, 0],
-          `h = ${fmt(s.h)}`,
-          "#7557a4",
-          true,
-        );
-    }
-  }
-  if (s.guide && s.view === "solid" && m.g) {
-    let p = s.type === "piramide" ? [0, -s.h / 2, s.a / 2] : [s.a, -s.h / 2, 0],
-      q = s.type === "cilindro" ? [s.a, s.h / 2, 0] : [0, s.h / 2, 0];
-    html += line(
-      p,
-      q,
-      `${s.type === "piramide" ? "ℓ" : "g"} = ${fmt(m.g)}`,
-      "#a45f2d",
-    );
-  }
-  $("#solid").innerHTML = html;
-}
-function drawNet() {
-  const s = state.geometry,
-    a = s.a,
-    h = s.type === "cubo" ? a : s.h,
-    b = s.type === "cubo" ? a : s.b;
-  let shapes = [],
-    minX = 0,
-    minY = 0,
-    maxX = 1,
-    maxY = 1;
-  const poly = (points, i) => {
-    shapes.push(
-      `<polygon points="${points.map((p) => p.join(",")).join(" ")}" fill="${colors[i % 6]}" stroke="#456841" stroke-width=".035"/>`,
-    );
-    points.forEach(([x, y]) => {
-      minX = Math.min(minX, x);
-      maxX = Math.max(maxX, x);
-      minY = Math.min(minY, y);
-      maxY = Math.max(maxY, y);
-    });
-  };
-  const rect = (x, y, w, h, i) =>
-    poly(
-      [
-        [x, y],
-        [x + w, y],
-        [x + w, y + h],
-        [x, y + h],
-      ],
-      i,
-    );
-  if (["cubo", "prisma"].includes(s.type)) {
-    rect(0, 0, a, h, 0);
-    rect(a, 0, b, h, 1);
-    rect(a + b, 0, a, h, 2);
-    rect(2 * a + b, 0, b, h, 3);
-    rect(0, -b, a, b, 4);
-    rect(0, h, a, b, 5);
-  }
-  if (s.type === "piramide") {
-    let l = Math.hypot(h, a / 2);
-    rect(0, 0, a, a, 0);
-    poly(
-      [
-        [0, 0],
-        [a, 0],
-        [a / 2, -l],
-      ],
-      1,
-    );
-    poly(
-      [
-        [a, 0],
-        [a, a],
-        [a + l, a / 2],
-      ],
-      2,
-    );
-    poly(
-      [
-        [a, a],
-        [0, a],
-        [a / 2, a + l],
-      ],
-      3,
-    );
-    poly(
-      [
-        [0, a],
-        [0, 0],
-        [-l, a / 2],
-      ],
-      4,
-    );
-  }
-  if (s.type === "cilindro") {
-    rect(0, 0, 2 * Math.PI * a, h, 0);
-    shapes.push(
-      `<circle cx="${a}" cy="${-a}" r="${a}" fill="${colors[1]}" stroke="#456841" stroke-width=".035"/><circle cx="${a}" cy="${h + a}" r="${a}" fill="${colors[2]}" stroke="#456841" stroke-width=".035"/>`,
-    );
-    minY = -2 * a;
-    maxY = h + 2 * a;
-  }
-  if (s.type === "cone") {
-    let g = Math.hypot(a, h),
-      theta = (2 * Math.PI * a) / g,
-      pts = [[0, 0]];
-    for (let i = 0; i <= 100; i++) {
-      let t = -theta / 2 + (theta * i) / 100;
-      pts.push([g * Math.sin(t), -g * Math.cos(t)]);
-    }
-    poly(pts, 0);
-    let cy = g + 2 * a;
-    shapes.push(
-      `<circle cx="0" cy="${cy}" r="${a}" fill="${colors[1]}" stroke="#456841" stroke-width=".035"/>`,
-    );
-    maxY = cy + a;
-    minX = Math.min(minX, -a);
-    maxX = Math.max(maxX, a);
-  }
-  let scale = Math.min(650 / (maxX - minX), 340 / (maxY - minY)) * s.zoom,
-    tx = 400 - ((maxX + minX) / 2) * scale,
-    ty = 230 - ((maxY + minY) / 2) * scale;
-  $("#solid").innerHTML =
-    `<g transform="translate(${tx} ${ty}) scale(${scale})">${shapes.join("")}</g><text x="400" y="450" text-anchor="middle" class="plot-label">${s.type === "cone" ? "Setor circular de raio g e ângulo 360° × r/g + disco da base" : s.type === "cilindro" ? "Retângulo de largura 2πr e altura h + dois discos" : "As regiões correspondem às faces do sólido; lados compartilhados são dobras."}</text>`;
 }
 function downloadSVG(id, name) {
   let original = $("#" + id),
@@ -734,197 +350,19 @@ function downloadSVG(id, name) {
   toast("Imagem SVG exportada.");
 }
 function functionsLab() {
-  const s = state.functions;
-  $("#main").innerHTML = shell(
-    "Funções",
-    "Conecte a expressão algébrica ao comportamento do gráfico.",
-    `<div class="control-title">Sua função <span>ƒ</span></div>${select(
-      "function-type",
-      "Família de funções",
-      [
-        ["afim", "Afim"],
-        ["quadratica", "Quadrática"],
-        ["exponencial", "Exponencial"],
-        ["trigonometrica", "Trigonométrica · seno"],
-      ],
-      s.type,
-    )}<div class="control-section"><h2>Parâmetros</h2>${range("param-a", s.type === "trigonometrica" ? "Amplitude (a)" : "Coeficiente a", s.a, -5, 5, 0.25)}${range("param-b", s.type === "exponencial" ? "Base (b)" : s.type === "trigonometrica" ? "Frequência angular (b)" : "Coeficiente b", s.b, s.type === "exponencial" ? 0.2 : -5, s.type === "exponencial" ? 4 : 5, 0.1)}${s.type !== "afim" ? range("param-c", s.type === "trigonometrica" ? "Fase (c) · radianos" : "Coeficiente c", s.c, -5, 5, 0.25) : ""}</div><div class="control-section">${check("compare", "Comparar com função-base", s.compare)}<p class="small">${s.type === "exponencial" ? "f(x) = a · bˣ + c. A base deve ser positiva; b = 1 produz uma constante." : s.type === "trigonometrica" ? "f(x) = a · sen(bx + c). Ângulos em radianos." : s.type === "afim" ? "f(x) = ax + b. Altere a inclinação e a interseção com o eixo y." : "f(x) = ax² + bx + c. Explore concavidade, raízes e vértice."}</p></div>`,
-    `<div class="stage-top"><strong>Plano cartesiano</strong><span class="pill">GRÁFICO EM TEMPO REAL</span></div><div class="stage"><div class="equation-label" id="equation"></div><svg id="plot" viewBox="0 0 800 480" role="img" aria-label="Gráfico da função"></svg><div class="stage-tools"><button id="plot-out" aria-label="Diminuir zoom do gráfico">−</button><button id="plot-home" aria-label="Restaurar escala">↺</button><button id="plot-in" aria-label="Ampliar gráfico">+</button><button id="plot-export" aria-label="Baixar gráfico SVG">↓</button></div></div><div class="legend"><span><i></i>Função explorada</span><span id="base-legend" ${s.compare ? "" : "hidden"}><i class="violet"></i>Função-base (tracejada)</span></div><div class="metrics" id="function-metrics"></div><div class="formula-panel" id="function-details"></div>`,
-  );
-  $("#function-type").onchange = (e) => {
-    s.type = e.target.value;
-    s.a = 1;
-    s.b = s.type === "exponencial" ? 2 : s.type === "trigonometrica" ? 1 : 0;
-    s.c = 0;
-    render();
-  };
-  ["a", "b", "c"].forEach((k) => {
-    if ($("#param-" + k)) bindRange("param-" + k, s, k, drawFunction);
+  cleanupLab = mountFunctions({
+    $,
+    fmt,
+    range,
+    select,
+    check,
+    metric,
+    shell,
+    common,
+    render,
+    state,
+    toast,
   });
-  $("#compare").onchange = (e) => {
-    s.compare = e.target.checked;
-    drawFunction();
-  };
-  $("#plot-out").onclick = () => {
-    s.zoom = Math.max(0.25, s.zoom / 1.4);
-    drawFunction();
-  };
-  $("#plot-in").onclick = () => {
-    s.zoom = Math.min(4, s.zoom * 1.4);
-    drawFunction();
-  };
-  $("#plot-home").onclick = () => {
-    s.zoom = 1;
-    drawFunction();
-  };
-  $("#plot-export").onclick = () => downloadSVG("plot", "grafico-" + s.type);
-  drawFunction();
-  common();
-}
-function drawFunction() {
-  const s = state.functions,
-    L = 10 / s.zoom,
-    Y = 6 / s.zoom,
-    X = (x) => 400 + (x / L) * 350,
-    V = (y) => 240 - (y / Y) * 205;
-  let html =
-      '<defs><clipPath id="plot-clip"><rect x="42" y="24" width="716" height="425"/></clipPath></defs>',
-    step = L > 20 ? 5 : L > 10 ? 2 : L < 4 ? 0.5 : 1;
-  for (let x = Math.ceil(-L / step) * step; x <= L; x += step) {
-    html += `<path d="M${X(x)} 25V447" stroke="#e0e6dc"/>`;
-    if (x !== 0)
-      html += `<text x="${X(x)}" y="258" text-anchor="middle" class="plot-label">${fmt(x)}</text>`;
-  }
-  for (let y = Math.ceil(-Y / step) * step; y <= Y; y += step) {
-    html += `<path d="M43 ${V(y)}H758" stroke="#e0e6dc"/>`;
-    if (y !== 0)
-      html += `<text x="389" y="${V(y) + 4}" text-anchor="end" class="plot-label">${fmt(y)}</text>`;
-  }
-  html +=
-    '<path d="M43 240H760M400 25V449" stroke="#839381" stroke-width="1.3"/><text x="761" y="233" class="plot-label">x</text><text x="411" y="28" class="plot-label">y</text><text x="386" y="258" class="plot-label">0</text>';
-  function curve(a, b, c, color, dash = "") {
-    let d = "",
-      started = false;
-    for (let i = 0; i <= 1000; i++) {
-      let x = -L * 1.025 + (2.05 * L * i) / 1000,
-        y = functionValue(s.type, x, a, b, c);
-      if (!Number.isFinite(y) || Math.abs(y) > Y * 100) {
-        started = false;
-        continue;
-      }
-      d += (started ? "L" : "M") + X(x).toFixed(2) + " " + V(y).toFixed(2);
-      started = true;
-    }
-    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="3" ${dash ? 'stroke-dasharray="7 6"' : ""} clip-path="url(#plot-clip)"/>`;
-  }
-  if (s.compare)
-    html += curve(
-      1,
-      s.type === "exponencial" ? 2 : s.type === "trigonometrica" ? 1 : 0,
-      0,
-      "#8869a4",
-      true,
-    );
-  html += curve(s.a, s.b, s.c, "#285b45");
-  $("#plot").innerHTML = html;
-  let signed = (v) => (v < 0 ? " − " + fmt(-v) : " + " + fmt(v)),
-    expr =
-      s.type === "afim"
-        ? `${fmt(s.a)}x${signed(s.b)}`
-        : s.type === "quadratica"
-          ? `${fmt(s.a)}x²${signed(s.b)}x${signed(s.c)}`
-          : s.type === "exponencial"
-            ? `${fmt(s.a)} · ${fmt(s.b)}ˣ${signed(s.c)}`
-            : `${fmt(s.a)} · sen(${fmt(s.b)}x${signed(s.c)})`;
-  $("#equation").textContent = "f(x) = " + expr;
-  $("#plot").setAttribute("aria-label", "Gráfico de f(x) = " + expr);
-  $("#base-legend").hidden = !s.compare;
-  let metrics = "",
-    detail = "";
-  if (s.type === "afim") {
-    metrics =
-      metric("Inclinação", fmt(s.a), "Coeficiente angular") +
-      metric("Intercepto em y", fmt(s.b), "Ponto (0; " + fmt(s.b) + ")") +
-      metric("Raiz", s.a ? fmt(-s.b / s.a) : s.b === 0 ? "Todo x" : "Nenhuma");
-    detail =
-      s.a > 0
-        ? "A função é crescente."
-        : s.a < 0
-          ? "A função é decrescente."
-          : "A função é constante.";
-  }
-  if (s.type === "quadratica") {
-    let delta = s.b * s.b - 4 * s.a * s.c,
-      vx = s.a ? -s.b / (2 * s.a) : null,
-      vy = s.a ? -delta / (4 * s.a) : null;
-    let roots = !s.a
-      ? s.b
-        ? fmt(-s.c / s.b)
-        : s.c === 0
-          ? "Todo x"
-          : "Nenhuma"
-      : delta < 0
-        ? "Sem raízes reais"
-        : delta === 0
-          ? fmt(-s.b / (2 * s.a))
-          : [
-              (-s.b - Math.sqrt(delta)) / (2 * s.a),
-              (-s.b + Math.sqrt(delta)) / (2 * s.a),
-            ]
-              .sort((a, b) => a - b)
-              .map((x) => fmt(x))
-              .join(" e ");
-    metrics =
-      metric("Raízes reais", roots) +
-      metric("Vértice", s.a ? `(${fmt(vx)}; ${fmt(vy)})` : "Não se aplica") +
-      metric(
-        "Discriminante",
-        s.a ? fmt(delta) : "Não se aplica",
-        "Δ = b² − 4ac",
-      );
-    detail = !s.a
-      ? "Com a = 0, a expressão deixa de ser quadrática."
-      : s.a > 0
-        ? "Concavidade para cima. O vértice é o ponto de mínimo."
-        : "Concavidade para baixo. O vértice é o ponto de máximo.";
-  }
-  if (s.type === "exponencial") {
-    metrics =
-      metric("Base", fmt(s.b)) +
-      metric("Intercepto em y", fmt(s.a + s.c)) +
-      metric(
-        "Assíntota horizontal",
-        s.a !== 0 && s.b !== 1 ? "y = " + fmt(s.c) : "Não se aplica",
-      );
-    detail =
-      s.a === 0 || s.b === 1
-        ? "Esta configuração produz uma função constante."
-        : (s.a * Math.log(s.b) > 0
-            ? "Função crescente. "
-            : "Função decrescente. ") +
-          `Domínio: ℝ. Imagem: ${s.a > 0 ? "]" + fmt(s.c) + "; +∞[" : "]−∞; " + fmt(s.c) + "["}.`;
-  }
-  if (s.type === "trigonometrica") {
-    metrics =
-      metric("Amplitude", s.b === 0 ? "0" : fmt(Math.abs(s.a))) +
-      metric(
-        "Período",
-        s.b && s.a ? fmt((2 * Math.PI) / Math.abs(s.b)) + " rad" : "Constante",
-      ) +
-      metric(
-        "Imagem",
-        s.b && s.a
-          ? `[${fmt(-Math.abs(s.a))}; ${fmt(Math.abs(s.a))}]`
-          : `{${fmt(s.a * Math.sin(s.c))}}`,
-      );
-    detail =
-      s.b && s.a
-        ? "Período T = 2π / |b|. Deslocamento horizontal = −c/b. O seno usa radianos."
-        : "Com a = 0 ou b = 0, a função é constante.";
-  }
-  $("#function-metrics").innerHTML = metrics;
-  $("#function-details").innerHTML =
-    `<p>${detail} A escala dos eixos é indicada pelos valores do plano.</p><details><summary class="small">Tabela de valores</summary><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${fmt(functionValue(s.type, x, s.a, s.b, s.c))}</td>`).join("")}</tr></tbody></table></details>`;
 }
 function statisticsLab() {
   const s = state.stats;
@@ -1030,7 +468,10 @@ function drawStats() {
     V = (y) => 340 - (y / peak) * 265,
     width = binned
       ? (660 / bins.length) * 0.8
-      : Math.min(45, ...bins.slice(1).map((b, i) => (X(b.x) - X(bins[i].x)) * 0.75));
+      : Math.min(
+          45,
+          ...bins.slice(1).map((b, i) => (X(b.x) - X(bins[i].x)) * 0.75),
+        );
   let html = '<text x="70" y="27" class="plot-label">Frequência</text>';
   for (let i = 0; i <= 4; i++) {
     let n = (peak * i) / 4;
@@ -1441,8 +882,8 @@ function restore() {
           dest[k] = src[k];
       }
     };
-    if (current === "geometria") apply(state.geometry, data);
-    if (current === "funcoes") apply(state.functions, data);
+    if (current === "geometria") state.geometry = sanitizeGeometry(data);
+    if (current === "funcoes") state.functions = sanitizeFunctions(data);
     if (current === "estatistica") {
       apply(state.stats, data);
       parseData(state.stats.text);
@@ -1465,27 +906,8 @@ function sanitize() {
     option = (o, k, list) => {
       if (!list.includes(o[k])) o[k] = list[0];
     };
-  let g = state.geometry;
-  option(g, "type", [
-    "cubo",
-    "prisma",
-    "piramide",
-    "cilindro",
-    "cone",
-    "esfera",
-  ]);
-  option(g, "view", ["solid", "net", "exploded"]);
-  ["a", "b"].forEach((k) => clamp(g, k, 1, 10));
-  clamp(g, "h", 1, 12);
-  clamp(g, "zoom", 0.45, 2);
-  clamp(g, "rx", -Math.PI, Math.PI);
-  clamp(g, "ry", -Math.PI * 100, Math.PI * 100);
-  if (g.type === "esfera") g.view = "solid";
-  let f = state.functions;
-  option(f, "type", ["afim", "quadratica", "exponencial", "trigonometrica"]);
-  ["a", "b", "c"].forEach((k) => clamp(f, k, -5, 5));
-  if (f.type === "exponencial") clamp(f, "b", 0.2, 4);
-  clamp(f, "zoom", 0.25, 4);
+  state.geometry = sanitizeGeometry(state.geometry);
+  state.functions = sanitizeFunctions(state.functions);
   try {
     parseData(state.stats.text);
   } catch {
@@ -1508,6 +930,8 @@ function sanitize() {
   option(b, "tab", ["pascal", "distribution"]);
 }
 function render() {
+  cleanupLab();
+  cleanupLab = () => {};
   document.querySelectorAll(".header nav a").forEach((a) => {
     let active = a.hash === "#" + current;
     a.classList.toggle("active", active);
@@ -1517,7 +941,7 @@ function render() {
   });
   document.title =
     (topics.find((t) => t[0] === current)?.[1] ||
-      "Experimente, observe, explique") + " · Exploração Matemática";
+      "Experimente, observe, explique") + " · Explore a Matemática";
   if (current === "inicio") {
     $("#main").innerHTML = home();
     $("#home-guide").onclick = guide;
@@ -1543,7 +967,7 @@ $("#dialog").addEventListener("click", (e) => {
 });
 $("#about").onclick = () =>
   showDialog(
-    `<div class="eyebrow">EXPLORAÇÃO MATEMÁTICA</div><h2>Uma matemática que<br>se constrói explorando.</h2><p>Laboratórios para apoiar professores do Ensino Fundamental e Médio em aulas investigativas. As representações são modelos didáticos; combine a exploração digital com argumentos, registros e materiais concretos.</p><p>Este projeto amplia o <a href="https://exploreamatematica.netlify.app/" target="_blank" rel="noopener">Laboratório de Probabilidade</a>. Inspirações de interação: <a href="https://polypad.amplify.com/pt/" target="_blank" rel="noopener">Polypad</a> e <a href="https://www.geogebra.org/classic" target="_blank" rel="noopener">GeoGebra Classic</a>. Implementação independente, sem afiliação com essas plataformas.</p><p>Sem cadastro, anúncios ou coleta de dados. As fontes são hospedadas junto com o site, sem requisições a serviços de terceiros. Os experimentos e os cálculos acontecem no navegador.</p><a href="https://github.com/tc-brito/exploreamatematica" target="_blank" rel="noopener" class="text-button">Código do projeto no GitHub ↗</a>`,
+    `<p>Laboratórios para apoiar professores do Ensino Fundamental e Médio em aulas investigativas. As representações são modelos didáticos; combine a exploração digital com argumentos, registros e materiais concretos.</p><p>Sem cadastro, anúncios ou coleta de dados. As fontes são hospedadas junto com o site, sem requisições a serviços de terceiros. Os experimentos e os cálculos acontecem no navegador.</p>`,
   );
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && document.body.classList.contains("presenting")) {

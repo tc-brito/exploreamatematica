@@ -2,7 +2,7 @@ import http from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
-const root = fileURLToPath(new URL("../", import.meta.url));
+const root = path.resolve(fileURLToPath(new URL("../", import.meta.url)));
 const port = Number(process.env.PORT || 4173);
 const mime = {
   ".html": "text/html; charset=utf-8",
@@ -18,7 +18,7 @@ http
         root,
         "." + decodeURIComponent(new URL(req.url, "http://localhost").pathname),
       );
-      if (!target.startsWith(root)) {
+      if (target !== root && !target.startsWith(root + path.sep)) {
         res.writeHead(403);
         return res.end();
       }

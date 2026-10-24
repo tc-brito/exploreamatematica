@@ -1,21 +1,12 @@
-# Exploração Matemática
+# Explore a Matemática
 
-Um laboratório de investigação matemática para professores e alunos, com interface em português e publicação estática no GitHub Pages.
+Versão publicada no GitHub Pages, com geometria espacial e funções revisadas. A migração para o Netlify fica para depois da revisão de estatística e probabilidade.
 
-## Laboratórios
+## Abrir para revisar
 
-- **Geometria espacial:** cubo, prisma retangular, pirâmide quadrangular, cilindro, cone e esfera. Rotação por arraste ou teclado; dimensões; faces, arestas e vértices de poliedros; medidas; geratriz e apótema; planificação, vista explodida e exportação em SVG. Área e volume atualizados automaticamente.
-- **Funções:** afim, quadrática, exponencial e trigonométrica (seno). Parâmetros, gráfico, comparação com função-base, zoom, tabela de valores e resultados específicos de cada família.
-- **Estatística:** entrada de até 500 números, média, mediana, moda, amplitude, variância populacional/amostral e desvio padrão. Gráfico de frequências, tabela e experimento com valor extremo.
-- **Probabilidade:** moeda com probabilidade ajustável, dado e soma de dois dados; lotes de até 1.000 lançamentos; frequências e probabilidades teóricas.
-- **Probabilidade condicional:** tabela de dupla entrada, quatro grupos configuráveis, comparação de P(A | B) e P(B | A), tratamento de condições vazias.
-- **Binômio de Newton:** triângulo de Pascal, expansão de (a + b)ⁿ, combinações e distribuição binomial, com 0 ≤ n ≤ 10.
+Descompacte o ZIP e abra **index.html** no navegador. Mantenha a pasta `assets` junto desse arquivo. A cópia inclui o JavaScript reunido em `assets/app.bundle.js` e as fontes locais; não exige instalação nem conexão para explorar.
 
-Todos os laboratórios incluem uma pergunta investigativa, roteiro de aula, impressão, modo de apresentação e compartilhamento da configuração por URL. Os lançamentos simulados são reiniciados quando se abre um link compartilhado.
-
-## Executar localmente
-
-Requer Node.js 20 ou superior. Não há dependências para instalar.
+Para desenvolver com recarregamento manual, usando Node.js 20 ou superior:
 
 ```sh
 npm start
@@ -23,64 +14,78 @@ npm start
 
 Abra `http://127.0.0.1:4173`. Para outra porta: `PORT=4175 npm start`.
 
-Use um servidor HTTP: abrir `index.html` por `file://` pode bloquear os módulos JavaScript em alguns navegadores.
+## O que mudou nesta rodada
 
-## Testar
+### Geometria espacial
+
+- Área em **u.a.** e volume em **u.v.** em todas as visualizações.
+- Cubo, prisma e pirâmide com faces articuladas, de 0% a 100% de abertura.
+- Cilindro e cone com desenrolamento contínuo da superfície lateral e abertura das bases.
+- A largura b aparece como medida no prisma retangular.
+- Pirâmide: diagonal da base, triângulo do apótema lateral e triângulo da aresta lateral, com ângulo reto e cálculo pelo teorema de Pitágoras.
+- Cilindro, cone e esfera gerados por rotação de uma figura plana, entre 0° e 360°, em torno do eixo x ou y.
+- Esfera: calota/segmento esférico e cunha, com raio, altura ou ângulo ajustáveis.
+- Vistas frontal, traseira, laterais direita/esquerda, superior, inferior e perspectiva 3D. A escolha funciona também na planificação e na revolução; arrastar ou usar as setas ativa a rotação livre.
+- Rotação por arraste ou setas, zoom, faces, arestas, vértices, medidas, geratriz e exportação SVG.
+
+### Funções
+
+- Ordem: afim, quadrática, exponencial, logística, logarítmica, trigonométrica e modular.
+- Até quatro equações independentes, com escolha de família, cor, visibilidade, coeficientes e domínio.
+- Botão de reprodução/pausa em cada coeficiente. A animação para ao trocar de exploração ou ocultar a aba.
+- Coordenadas ao passar o ponteiro e consulta pelo teclado com o campo **Consultar x**.
+- Domínio natural por padrão. A restrição opcional do domínio é diferente da janela visível do gráfico.
+- Seno, cosseno e tangente na forma **a + b · trig(cx + d)**. Eixo x em radianos; máximos/mínimos e assíntotas tracejados; fórmula e cálculo do período.
+- A função logística também está acessível por um atalho na função exponencial.
+- Informações algébricas e tabela de valores da equação selecionada.
+
+### Construção livre
+
+- Até cinco expressões, oito cores, pontos com rótulos e projeções nos eixos.
+- Eixo x numérico ou em radianos; nomes dos eixos; janela e dimensões da figura.
+- Malha e legenda opcionais; traço limpo com tipografia serifada, adequado a atividades e provas.
+- Exportação **SVG vetorial e PNG com fundo transparente**, sem marca d’água.
+- Use `x^2`, `2x`, `sen(x)`, `cos(x)`, `tan(x)`, `sqrt(x)`, `ln(x)`, `log(x)`, `exp(x)`, `abs(x)` ou `|x|`. `log` usa base 10; `ln`, base e. Aceita pi e vírgula decimal. Por exemplo: `2sen(x) + 1`.
+- Expressões aritméticas passam por um analisador próprio, sem executar JavaScript. Limite de 240 caracteres por expressão e 12 pontos destacados.
+
+O diálogo **Sobre o projeto** contém somente os dois parágrafos solicitados, sem links externos.
+
+Estatística e probabilidade permanecem disponíveis com suas funções anteriores, aguardando a próxima rodada de alterações.
+
+## Editar e verificar
+
+Os módulos legíveis ficam em `assets/`. Depois de editar JavaScript, gere novamente o arquivo usado pelo navegador:
 
 ```sh
+npm run build
 npm test
-node --check assets/app.js
 ```
 
-Os testes conferem fórmulas, casos degenerados, propriedades da distribuição binomial, validação de entradas e topologia dos poliedros. A interface também foi verificada manualmente no navegador em uma janela ampla e uma janela estreita.
+A geração usa esbuild 0.28.2 pelo npm e pode precisar de internet na primeira execução. O site pronto não depende de serviços externos.
 
-## Publicar em tc-brito/exploreamatematica
-
-O fluxo `.github/workflows/pages.yml` publica automaticamente após cada envio para `main`. Ele executa os testes e envia apenas `index.html`, `.nojekyll` e `assets/`.
-
-1. Envie estes arquivos para a branch `main` do repositório.
-2. No GitHub, abra **Settings → Pages → Build and deployment → Source → GitHub Actions**.
-3. Em **Actions → Publicar no GitHub Pages**, execute **Run workflow** caso a primeira execução tenha ocorrido antes da configuração de Pages.
-4. Aguarde o resultado verde do deploy. O endereço esperado é `https://tc-brito.github.io/exploreamatematica/`.
-
-O endereço só deve ser considerado publicado depois de uma implantação bem-sucedida. Os caminhos relativos e a navegação por fragmentos são compatíveis com o subdiretório do GitHub Pages.
-
-Referência oficial: https://docs.github.com/en/pages/getting-started-with-github-pages/using-custom-workflows-with-github-pages
+Os 20 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo quatro curvas, cinco expressões, coordenadas e exportação PNG.
 
 ## Estrutura
 
-```text
-index.html             Estrutura e navegação
-assets/app.js          Estado, interações, laboratórios e visualizações
-assets/math.js         Cálculos matemáticos puros
-assets/style.css       Layout responsivo, impressão e acessibilidade
-assets/fonts.css       Fontes locais
-assets/*LICENSE.txt    Licenças das fontes
-scripts/serve.mjs      Servidor de desenvolvimento
- tests/math.test.mjs   Testes matemáticos
-.github/workflows/     Publicação contínua
-```
+- `index.html`: página de entrada, funciona também por abertura local.
+- `assets/app.js`: navegação e laboratórios de estatística/probabilidade.
+- `assets/geometry-model.js`: geometrias e cálculos de partes da esfera.
+- `assets/geometry-lab.js`: controles e renderização dos sólidos.
+- `assets/function-math.js`: famílias e analisador de expressões.
+- `assets/functions-lab.js`: interface de funções e editor livre.
+- `assets/plot.js`: traçado, coordenadas e exportação.
+- `assets/app.bundle.js`: arquivo gerado; não editar diretamente.
+- `assets/style.css`, `fonts.css` e arquivos TTF: estilo e fontes locais.
+- `tests/`: testes matemáticos e de exportação.
+- `scripts/serve.mjs`: servidor local de desenvolvimento.
 
-## Decisões e limites do modelo
+## Convenções dos modelos
 
-- Sólidos retos, com bases circulares ou retangulares; a pirâmide tem base quadrada e vértice sobre o centro da base.
-- A planificação é uma representação plana em escala, alternada por um botão. Não há animação contínua de dobragem.
-- A esfera não possui planificação plana exata sem deformação; por isso, essa opção fica indisponível.
-- As superfícies curvas são aproximadas por uma malha visual; os cálculos usam as fórmulas exatas dos sólidos, e não a área da malha.
-- Na vista explodida, as partes são afastadas para inspeção; o volume exibido continua sendo o volume do sólido original.
-- O diagrama condicional é esquemático: o tamanho dos retângulos não codifica as contagens. A informação numérica e a tabela são as referências.
-- Gráficos estatísticos com mais de 25 valores distintos agrupam os dados em 12 intervalos. Os cálculos e a tabela preservam todos os valores originais.
-- O laboratório trigonométrico desta versão explora a família seno.
-- Estado mantido durante a navegação nesta aba; recarregar reinicia a sessão, exceto quando o link contém uma configuração compartilhada. Não há contas, banco de dados ou analytics.
-
-## Acessibilidade e privacidade
-
-HTML semântico, foco visível, rótulos nos controles, navegação por teclado, descrição das visualizações e tabelas alternativas. O sólido pode ser girado com as setas quando está focado. Não há movimento automático. Fontes hospedadas localmente, sem coleta de dados nem chamadas a APIs externas durante as explorações. Nenhuma certificação formal de conformidade WCAG foi realizada.
-
-## Referências de design
-
-- Site original: https://exploreamatematica.netlify.app/
-- Polypad: https://polypad.amplify.com/pt/
-- GeoGebra Classic: https://www.geogebra.org/classic
-
-Implementação independente, sem incorporar o código dessas plataformas nem pressupor afiliação. DM Sans e Manrope são distribuídas sob SIL Open Font License; os textos das licenças estão em `assets/`.
+- Sólidos retos; pirâmide de base quadrada com vértice sobre o centro.
+- A esfera não possui planificação plana exata sem deformação. Essa opção permanece indisponível; sua construção por revolução é explorável.
+- Superfícies curvas usam malhas visuais; as medidas exibidas usam fórmulas analíticas. No teste, a diferença de área das malhas desenvolvidas ficou abaixo de 0,2%.
+- A calota é a superfície curva; seu volume é o volume do segmento esférico correspondente. Na cunha, a área total inclui os dois cortes semicirculares, exceto na volta completa.
+- As animações de revolução exibem o volume varrido e a área do sólido completo, com rótulos distintos.
+- As curvas são amostradas numericamente e refinadas perto de variações rápidas; a figura é um modelo visual, não uma demonstração. Para funções muito oscilatórias, ajuste a janela.
+- O estado permanece ao navegar entre laboratórios na mesma aba. Recarregar reinicia a sessão; o botão Compartilhar inclui os parâmetros no link. Um link `file://` só é útil no mesmo computador; após a publicação, o compartilhamento usa o endereço público.
+- Fontes DM Sans e Manrope locais, com licenças SIL OFL na pasta `assets`. Sem analytics, contas ou chamadas a APIs durante as explorações.

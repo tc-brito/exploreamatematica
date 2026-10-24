@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "start": "node scripts/serve.mjs"
+    "start": "node scripts/serve.mjs",
+    "build": "npx --yes esbuild@0.28.2 assets/app.js --bundle --format=iife --target=es2020 --outfile=assets/app.bundle.js"
   }
 }
