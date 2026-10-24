@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#194c40" />
+    <meta
+      name="description"
+      content="Um laboratório interativo para investigar probabilidade, estatística, geometria espacial e funções em sala de aula."
+    />
+    <title>Exploração Matemática — experimente, observe, explique</title>
+    <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./assets/style.css" />
+    <script type="module" src="./assets/app.js"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Pular para o conteúdo</a>
+    <header class="header">
+      <a class="brand" href="#inicio" aria-label="Exploração Matemática, início"
+        ><span class="brandmark">e<span>m</span><i>✳</i></span
+        ><span>exploração<br /><strong>matemática</strong></span></a
+      >
+      <nav aria-label="Navegação principal">
+        <a href="#inicio">Explorar</a><a href="#geometria">Geometria</a
+        ><a href="#funcoes">Funções</a><a href="#estatistica">Estatística</a
+        ><a href="#probabilidade">Probabilidade</a>
+      </nav>
+      <button class="quiet" id="teacher-guide">
+        Guia do professor <span aria-hidden="true">↗</span>
+      </button>
+    </header>
+    <main id="main" tabindex="-1"></main>
+    <footer>
+      <a class="footer-brand" href="#inicio"
+        >exploração matemática <span>✳</span></a
+      ><span>Um espaço para pensar, testar e descobrir.</span
+      ><button class="text-button" id="about">Sobre o projeto</button>
+    </footer>
+    <dialog id="dialog">
+      <button class="dialog-close quiet" aria-label="Fechar janela">✕</button>
+      <div id="dialog-content"></div>
+    </dialog>
+    <div id="toast" role="status"></div>
+  </body>
+</html>
