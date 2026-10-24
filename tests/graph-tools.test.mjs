@@ -126,10 +126,10 @@ test("SVG conserva passos, espessura e posicionamento editorial dos eixos", () =
   assert.match(svg, /stroke-width="4" stroke-linejoin/);
   assert.doesNotMatch(svg, />2,5<|>7,5</);
   const x = svg.match(
-      /<text x="([^"]+)" y="([^"]+)"[^>]*font-style="normal"[^>]*>x<\/text>/,
+      /<text[^>]* x="([^"]+)" y="([^"]+)"[^>]*font-style="normal"[^>]*>x<\/text>/,
     ),
     y = svg.match(
-      /<text x="([^"]+)" y="([^"]+)"[^>]*font-style="normal"[^>]*>y<\/text>/,
+      /<text[^>]* x="([^"]+)" y="([^"]+)"[^>]*font-style="normal"[^>]*>y<\/text>/,
     );
   assert.ok(+x[2] > g.Y(0));
   assert.ok(+y[1] < g.X(0));

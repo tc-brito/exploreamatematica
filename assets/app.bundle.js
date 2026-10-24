@@ -656,6 +656,7 @@
       active: 0,
       curves: [makeCurve()],
       comparisons: [makeExpression(2)],
+      points: [],
       xmin: -10,
       xmax: 10,
       ymin: -6,
@@ -672,6 +673,8 @@
         widthCm: 14,
         heightCm: 9,
         axesBold: false,
+        showOrigin: false,
+        tickMode: "regular",
         xstep: "",
         ystep: "",
         xlabel: "x",
@@ -736,6 +739,12 @@
       trigonometrica: a + plus + b + op("\xB7") + `<mi mathvariant="normal">${c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen"}</mi>` + op("(") + cc + x + plus + d + op(")")
     }[c.type];
     return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow>${body}</mrow></math>`;
+  }
+  function trigSummaryMathML(c) {
+    const esc2 = (s) => String(s).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+    const numerator = c.trig === "tan" ? `<mi mathvariant="normal">\u03C0</mi>` : `<mrow><mn>2</mn><mi mathvariant="normal">\u03C0</mi></mrow>`, T = period(c);
+    const body = T ? `<mspace width=".35em"/><mo>\xB7</mo><mspace width=".35em"/><mi mathvariant="normal">T</mi><mo>=</mo><mfrac>${numerator}<mrow><mo>|</mo><mi mathvariant="normal">c</mi><mo>|</mo></mrow></mfrac><mo>=</mo><mfrac>${numerator}<mrow><mo>|</mo><mn>${num(c.c)}</mn><mo>|</mo></mrow></mfrac><mo>\u2248</mo><mn>${num(T)}</mn><mspace width=".3em"/><mtext>rad</mtext>` : "<mtext> \xB7 Sem per\xEDodo fundamental positivo</mtext>";
+    return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mstyle mathvariant="normal"><mtext>f(x) = ${esc2(familyFormula(c))}</mtext>${body}${c.trig !== "tan" ? `<mtext> \xB7 Amplitude = |b| = ${num(Math.abs(c.b))}</mtext>` : ""}</mstyle></math>`;
   }
   function familyFormula(c, symbolic = false) {
     const trig = c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen";
@@ -990,6 +999,13 @@
       out.curves = [c];
     }
     out.active = Math.round(finite(raw.active, 0, 0, out.curves.length - 1));
+    if (Array.isArray(raw.points))
+      out.points = raw.points.slice(0, 12).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)).map((p) => ({
+        x: p.x,
+        y: p.y,
+        label: String(p.label || "").slice(0, 24),
+        project: p.project !== false
+      }));
     out.mode = raw.mode === "free" ? "free" : "families";
     for (const k of ["xmin", "xmax", "ymin", "ymax"])
       out[k] = finite(raw[k], out[k], -1e4, 1e4);
@@ -1032,6 +1048,8 @@
       out.free.widthCm = finite(f.widthCm, 14, 6, 30);
       out.free.heightCm = finite(f.heightCm, 9, 4, 25);
       out.free.axesBold = f.axesBold === true;
+      out.free.showOrigin = f.showOrigin === true;
+      out.free.tickMode = f.tickMode === "points" ? "points" : "regular";
       for (const k of ["xstep", "ystep"]) {
         const rawStep = String(f[k] ?? "").slice(0, 40);
         try {
@@ -1512,6 +1530,129 @@
     svg.innerHTML = html;
   }
 
+  // assets/graph-analysis.js
+  function findIntersections(curves, view) {
+    const points = [], n = 600, span = view.xmax - view.xmin;
+    const tolerance = Math.max(1e-10, (view.ymax - view.ymin) * 1e-9);
+    for (let a = 0; a < curves.length; a++)
+      for (let b = a + 1; b < curves.length; b++) {
+        const f = curves[a].fn, g = curves[b].fn;
+        if (!f || !g) continue;
+        const diff = (x) => f(x) - g(x);
+        const samples = Array.from({ length: n + 1 }, (_, i) => ({
+          x: view.xmin + span * i / n
+        }));
+        samples.forEach((p) => p.d = diff(p.x));
+        if (samples.every((p) => Number.isFinite(p.d) && Math.abs(p.d) < tolerance))
+          continue;
+        const add2 = (x) => {
+          const y = f(x), z = g(x);
+          if (!Number.isFinite(y) || !Number.isFinite(z) || Math.abs(y - z) > tolerance || y < view.ymin || y > view.ymax)
+            return;
+          const existing = points.find(
+            (p) => Math.abs(p.x - x) < span * 1e-7 && Math.abs(p.y - y) < tolerance * 100
+          );
+          const names2 = [
+            curves[a].name || String(a + 1),
+            curves[b].name || String(b + 1)
+          ];
+          if (existing)
+            existing.names = [.../* @__PURE__ */ new Set([...existing.names, ...names2])];
+          else if (points.length < 200)
+            points.push({ x, y, names: names2, color: curves[a].color });
+        };
+        for (const x of [
+          curves[a].domainMin,
+          curves[a].domainMax,
+          curves[b].domainMin,
+          curves[b].domainMax
+        ])
+          if (Number.isFinite(x) && x >= view.xmin && x <= view.xmax) add2(x);
+        for (let i = 0; i < n; i++) {
+          const p = samples[i], q = samples[i + 1];
+          if (!Number.isFinite(p.d) || !Number.isFinite(q.d)) continue;
+          if (p.d * q.d < 0) {
+            let lo = p.x, hi = q.x, dlo = p.d;
+            for (let k = 0; k < 55; k++) {
+              const mid = (lo + hi) / 2, d = diff(mid);
+              if (!Number.isFinite(d)) break;
+              if (d === 0) {
+                lo = hi = mid;
+                break;
+              }
+              if (Math.sign(d) === Math.sign(dlo)) {
+                lo = mid;
+                dlo = d;
+              } else hi = mid;
+            }
+            add2((lo + hi) / 2);
+          }
+        }
+        for (let i = 0; i <= n; i++) {
+          const p = samples[i], prev = samples[i - 1], next = samples[i + 1];
+          if (p.d === 0 && (!prev || prev.d !== 0) && (!next || next.d !== 0))
+            add2(p.x);
+          if (prev && next && Number.isFinite(p.d) && Math.abs(p.d) < Math.abs(prev.d) && Math.abs(p.d) < Math.abs(next.d)) {
+            let lo = prev.x, hi = next.x;
+            for (let k = 0; k < 60; k++) {
+              const x1 = lo + (hi - lo) / 3, x2 = hi - (hi - lo) / 3;
+              if (Math.abs(diff(x1)) < Math.abs(diff(x2))) hi = x2;
+              else lo = x1;
+            }
+            add2((lo + hi) / 2);
+          }
+        }
+      }
+    return points.sort((a, b) => a.x - b.x);
+  }
+  function findSpecialPoints(curves, view, kind = "intersections") {
+    if (kind === "intersections")
+      return findIntersections(curves, view).map((p) => ({
+        ...p,
+        kind: "Interse\xE7\xE3o",
+        description: p.names.join(" \u2229 ")
+      }));
+    if (kind === "roots")
+      return curves.flatMap(
+        (c) => findIntersections([c, { fn: () => 0, name: "eixo x" }], view).map(
+          (p) => ({ ...p, kind: "Zero", description: c.name })
+        )
+      );
+    const result = [], n = 600, dx = (view.xmax - view.xmin) / n;
+    for (const c of curves) {
+      const values = Array.from(
+        { length: n + 1 },
+        (_, i) => c.fn(view.xmin + i * dx)
+      );
+      for (let i = 1; i < n; i++) {
+        const a = values[i - 1], b = values[i], d = values[i + 1];
+        if (![a, b, d].every(Number.isFinite)) continue;
+        const sign = b < a && b < d ? 1 : b > a && b > d ? -1 : 0;
+        if (!sign) continue;
+        let lo = view.xmin + (i - 1) * dx, hi = lo + 2 * dx;
+        for (let j = 0; j < 60; j++) {
+          const x1 = lo + (hi - lo) / 3, x2 = hi - (hi - lo) / 3;
+          if (sign * c.fn(x1) < sign * c.fn(x2)) hi = x2;
+          else lo = x1;
+        }
+        const x = (lo + hi) / 2, y = c.fn(x), eps = dx * 0.01, yl = c.fn(x - eps), yr = c.fn(x + eps);
+        if (![y, yl, yr].every(Number.isFinite) || y < view.ymin || y > view.ymax || !(sign * (yl - y) > 0 && sign * (yr - y) > 0))
+          continue;
+        if (!result.some(
+          (p) => p.description === c.name && Math.abs(p.x - x) < dx * 0.01
+        ))
+          result.push({
+            x,
+            y,
+            kind: sign === 1 ? "M\xEDnimo" : "M\xE1ximo",
+            description: c.name
+          });
+        if (result.length >= 100) return result;
+      }
+    }
+    return result.sort((a, b) => a.x - b.x);
+  }
+
   // assets/plot-utils.js
   function cmToPixels(cm, dpi = 96) {
     return Math.round(cm * dpi / 2.54);
@@ -1589,75 +1730,6 @@
     };
   }
 
-  // assets/graph-analysis.js
-  function findIntersections(curves, view) {
-    const points = [], n = 600, span = view.xmax - view.xmin;
-    const tolerance = Math.max(1e-10, (view.ymax - view.ymin) * 1e-9);
-    for (let a = 0; a < curves.length; a++)
-      for (let b = a + 1; b < curves.length; b++) {
-        const f = curves[a].fn, g = curves[b].fn;
-        if (!f || !g) continue;
-        const diff = (x) => f(x) - g(x);
-        const samples = Array.from({ length: n + 1 }, (_, i) => ({
-          x: view.xmin + span * i / n
-        }));
-        samples.forEach((p) => p.d = diff(p.x));
-        if (samples.every((p) => Number.isFinite(p.d) && Math.abs(p.d) < tolerance))
-          continue;
-        const add2 = (x) => {
-          const y = f(x), z = g(x);
-          if (!Number.isFinite(y) || !Number.isFinite(z) || Math.abs(y - z) > tolerance || y < view.ymin || y > view.ymax)
-            return;
-          const existing = points.find(
-            (p) => Math.abs(p.x - x) < span * 1e-7 && Math.abs(p.y - y) < tolerance * 100
-          );
-          const names2 = [
-            curves[a].name || String(a + 1),
-            curves[b].name || String(b + 1)
-          ];
-          if (existing)
-            existing.names = [.../* @__PURE__ */ new Set([...existing.names, ...names2])];
-          else if (points.length < 200)
-            points.push({ x, y, names: names2, color: curves[a].color });
-        };
-        for (let i = 0; i < n; i++) {
-          const p = samples[i], q = samples[i + 1];
-          if (!Number.isFinite(p.d) || !Number.isFinite(q.d)) continue;
-          if (p.d * q.d < 0) {
-            let lo = p.x, hi = q.x, dlo = p.d;
-            for (let k = 0; k < 55; k++) {
-              const mid = (lo + hi) / 2, d = diff(mid);
-              if (!Number.isFinite(d)) break;
-              if (d === 0) {
-                lo = hi = mid;
-                break;
-              }
-              if (Math.sign(d) === Math.sign(dlo)) {
-                lo = mid;
-                dlo = d;
-              } else hi = mid;
-            }
-            add2((lo + hi) / 2);
-          }
-        }
-        for (let i = 0; i <= n; i++) {
-          const p = samples[i], prev = samples[i - 1], next = samples[i + 1];
-          if (p.d === 0 && (!prev || prev.d !== 0) && (!next || next.d !== 0))
-            add2(p.x);
-          if (prev && next && Number.isFinite(p.d) && Math.abs(p.d) < Math.abs(prev.d) && Math.abs(p.d) < Math.abs(next.d)) {
-            let lo = prev.x, hi = next.x;
-            for (let k = 0; k < 60; k++) {
-              const x1 = lo + (hi - lo) / 3, x2 = hi - (hi - lo) / 3;
-              if (Math.abs(diff(x1)) < Math.abs(diff(x2))) hi = x2;
-              else lo = x1;
-            }
-            add2((lo + hi) / 2);
-          }
-        }
-      }
-    return points.sort((a, b) => a.x - b.x);
-  }
-
   // assets/plot.js
   var xml = (s) => String(s).replace(
     /[&<>"']/g,
@@ -1671,16 +1743,43 @@
     const raw = span / space, p = 10 ** Math.floor(Math.log10(raw));
     return [1, 2, 2.5, 5, 10].map((x) => x * p).find((x) => x >= raw) || 10 * p;
   }
+  function axisNumber(n, o = {}) {
+    return o.professional ? Number(n.toFixed(4)).toLocaleString("pt-BR", {
+      maximumFractionDigits: 4,
+      useGrouping: true
+    }).replaceAll(".", " ") : decimal(n, 4);
+  }
+  function radianTick(x, top, value, font = 15) {
+    const label = piLabel(value), m = label.match(/^([−-]?)([^/]+)\/(\d+)$/);
+    if (!m)
+      return `<text x="${x}" y="${top + font}" text-anchor="middle">${xml(label)}</text>`;
+    const small = font * 0.9, width = Math.max(m[2].length, m[3].length) * small * 0.56 + 4;
+    return `<g class="radian-fraction" aria-label="${xml(label)}" font-style="normal" font-size="${small}">${m[1] ? `<text x="${x - width / 2 - 3}" y="${top + font * 1.25}" text-anchor="end">\u2212</text>` : ""}<text x="${x}" y="${top + small}" text-anchor="middle">${xml(m[2])}</text><line x1="${x - width / 2}" x2="${x + width / 2}" y1="${top + font}" y2="${top + font}" stroke="currentColor" stroke-width="0.8"/><text x="${x}" y="${top + font * 1.95}" text-anchor="middle">${xml(m[3])}</text></g>`;
+  }
   function graphGeometry(o) {
-    const w = o.width || 900, h = o.height || 530, font = o.professional ? 14.6667 : 15, left = o.professional ? Math.max(
-      44,
-      Math.min(w * 0.4, (o.ylabel || "").length * font * 0.52 + 16)
-    ) : 52, right = o.professional ? 25 : 28, legendCount = o.legend ? o.curves.filter((c) => c.showEquation !== false).length : 0, legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20, top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28, bottom = o.professional ? 54 : 38, W = w - left - right, H = h - top - bottom, X = (x) => left + (x - o.xmin) / (o.xmax - o.xmin) * W, Y = (y) => top + (o.ymax - y) / (o.ymax - o.ymin) * H;
+    const w = o.width || 900, h = o.height || 530, font = o.professional ? 14.6667 : 18, left = Math.max(
+      52,
+      Math.min(w * 0.35, (o.ylabel || "").length * font * 0.52 + 18),
+      Math.min(
+        w * 0.25,
+        Math.max(axisNumber(o.ymin, o).length, axisNumber(o.ymax, o).length) * font * 0.5 + 16
+      )
+    ), xNameOffset = Math.max(
+      10,
+      (o.radians ? piLabel(o.xmax).split("/")[0] : axisNumber(o.xmax, o)).length * font * 0.28 + 4
+    ), right = Math.max(
+      30,
+      Math.min(
+        w * 0.32,
+        (o.xlabel || "").length * font * 0.52 + xNameOffset + 6
+      )
+    ), legendCount = o.legend ? o.curves.filter((c) => c.showEquation !== false).length : 0, legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20, top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28, bottom = o.radians ? 66 : 54, W = w - left - right, H = h - top - bottom, X = (x) => left + (x - o.xmin) / (o.xmax - o.xmin) * W, Y = (y) => top + (o.ymax - y) / (o.ymax - o.ymin) * H;
     return {
       w,
       h,
       font,
       legendStep,
+      xNameOffset,
       left,
       right,
       top,
@@ -1780,39 +1879,80 @@
       xstep = steps.find((s) => s >= (o.xmax - o.xmin) / (W / 78)) || 4096 * Math.PI;
     } else xstep = niceStep(o.xmax - o.xmin, Math.max(3, W / 75));
     const ystep = Number.isFinite(o.ystep) && o.ystep > 0 ? o.ystep : niceStep(o.ymax - o.ymin, Math.max(3, H / 58)), id = "graph-clip";
-    let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
+    const labelHoles = [];
+    let html = `<defs>__LABEL_MASK__<clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
     if (o.legend)
       o.curves.filter((c) => c.showEquation !== false).forEach((c, i) => {
         html += `<line x1="${left}" x2="${left + 23}" y1="${19 + i * g.legendStep}" y2="${19 + i * g.legendStep}" stroke="${c.color}" stroke-width="1.6"/><text x="${left + 33}" y="${24 + i * g.legendStep}" font-size="${Math.min(font, g.legendStep - 2)}">${xml(c.label)}</text>`;
       });
-    const xstride = Math.max(1, Math.ceil((o.xmax - o.xmin) / xstep / 200)), ystride = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / 200));
-    const xlabels = Math.max(
-      xstride,
-      Math.ceil((o.xmax - o.xmin) / xstep / (W / 35))
-    ), ylabels = Math.max(
-      ystride,
-      Math.ceil((o.ymax - o.ymin) / ystep / (H / 25))
+    const regular = (lo, hi, step) => {
+      const stride = Math.max(1, Math.ceil((hi - lo) / step / 200)), values = [];
+      for (let i = Math.ceil(lo / step / stride) * stride; i <= Math.floor(hi / step); i += stride)
+        values.push(i * step);
+      return values;
+    };
+    const xs = regular(o.xmin, o.xmax, xstep), ys = regular(o.ymin, o.ymax, ystep);
+    html += `<g class="graph-grid" clip-path="url(#${id})" mask="url(#label-mask)" fill="none" stroke="${grid}" stroke-width=".65">`;
+    if (o.grid) {
+      for (const x of xs) html += `<path d="M${X(x)} ${top}V${h - bottom}"/>`;
+      for (const y of ys) html += `<path d="M${left} ${Y(y)}H${w - right}"/>`;
+    }
+    html += "</g>";
+    const visiblePoints = (o.points || []).filter(
+      (p) => p.x >= o.xmin && p.x <= o.xmax && p.y >= o.ymin && p.y <= o.ymax
     );
-    for (let i = Math.ceil(o.xmin / xstep / xstride) * xstride; i <= Math.floor(o.xmax / xstep); i += xstride) {
-      const x = i * xstep, u = X(x);
-      if (o.grid)
-        html += `<path d="M${u} ${top}V${h - bottom}" stroke="${grid}" stroke-width=".8"/>`;
-      html += `<path d="M${u} ${xAxis - 4}v8" stroke="${ink}"/>`;
-      if (Math.abs(x) > xstep * 1e-6 && i % xlabels === 0)
-        html += `<text x="${u}" y="${xAxis + font + 7 > h - 8 ? xAxis - 9 : xAxis + font + 7}" text-anchor="middle">${xml(o.radians ? piLabel(x) : decimal(x, 4))}</text>`;
+    const ticks = (values, axis, step) => {
+      const special = visiblePoints.filter((p) => p.project || Math.abs(p[axis === "x" ? "y" : "x"]) < 1e-9).map((p) => p[axis]);
+      const all = (o.tickMode === "points" ? [] : values).map((v) => ({
+        v,
+        special: false
+      }));
+      for (const v of special) {
+        const same = all.find((p) => Math.abs(p.v - v) < step * 1e-7);
+        if (same) same.special = true;
+        else all.push({ v, special: true });
+      }
+      return all.sort((a, b) => a.v - b.v);
+    };
+    const xt = ticks(xs, "x", xstep), yt = ticks(ys, "y", ystep), xSkip = Math.max(
+      1,
+      Math.ceil((o.xmax - o.xmin) / xstep / (W / (o.radians ? 58 : 40)))
+    ), ySkip = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / (H / 27)));
+    for (const t of xt) {
+      const u = X(t.v);
+      html += `<path d="M${u} ${xAxis - 3}v6" stroke="${ink}" stroke-width=".9"/>`;
+      const crowded = !t.special && xt.some((p) => p.special && Math.abs(X(p.v) - u) < (o.radians ? 42 : 28));
+      if (Math.abs(t.v) > xstep * 1e-7 && !crowded && (t.special || Math.abs(Math.round(t.v / xstep)) % xSkip === 0)) {
+        const text = o.radians ? piLabel(t.v) : axisNumber(t.v, o), frac = o.radians && text.includes("/"), width = (frac ? text.split("/")[0].length : text.length) * font * 0.58 + 8;
+        labelHoles.push(
+          `<rect x="${u - width / 2}" y="${xAxis + 5}" width="${width}" height="${frac ? font * 2.1 + 6 : font + 8}" fill="#000"/>`
+        );
+        html += o.radians ? radianTick(u, xAxis + 8, t.v, font) : `<text x="${u}" y="${xAxis + font + 8}" text-anchor="middle">${xml(text)}</text>`;
+      }
     }
-    for (let i = Math.ceil(o.ymin / ystep / ystride) * ystride; i <= Math.floor(o.ymax / ystep); i += ystride) {
-      const y = i * ystep, v = Y(y);
-      if (o.grid)
-        html += `<path d="M${left} ${v}H${w - right}" stroke="${grid}" stroke-width=".8"/>`;
-      html += `<path d="M${yAxis - 4} ${v}h8" stroke="${ink}"/>`;
-      if (Math.abs(y) > ystep * 1e-6 && i % ylabels === 0)
-        html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(decimal(y, 4))}</text>`;
+    for (const t of yt) {
+      const v = Y(t.v);
+      html += `<path d="M${yAxis - 3} ${v}h6" stroke="${ink}" stroke-width=".9"/>`;
+      const crowded = !t.special && yt.some((p) => p.special && Math.abs(Y(p.v) - v) < font * 1.4);
+      if (Math.abs(t.v) > ystep * 1e-7 && !crowded && (t.special || Math.abs(Math.round(t.v / ystep)) % ySkip === 0)) {
+        const text = axisNumber(t.v, o), width = text.length * font * 0.58 + 6;
+        labelHoles.push(
+          `<rect x="${yAxis - 13 - width}" y="${v - font * 0.7}" width="${width + 6}" height="${font + 5}" fill="#000"/>`
+        );
+        html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(text)}</text>`;
+      }
     }
-    html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/>`;
-    if (o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
-      html += `<text x="${yAxis - 10}" y="${xAxis + font + 7}" text-anchor="end">0</text>`;
-    html += `<text x="${w - right + 9}" y="${o.professional ? xAxis + 2 * font + 14 : xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${o.professional ? yAxis - 13 : yAxis + 13}" y="${top - 9}" text-anchor="${o.professional ? "end" : "start"}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
+    html += `<g class="graph-axes" fill="none" stroke="${ink}" stroke-width="1.1"><path d="M${left} ${xAxis}H${w - right}" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top}" marker-end="url(#axis-arrow)"/></g>`;
+    if (o.showOrigin && o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
+      html += `<text class="origin-label" x="${yAxis - 10}" y="${xAxis + font + 8}" text-anchor="end">0</text>`;
+    const xNameSize = Math.min(
+      font,
+      (right - g.xNameOffset - 4) / Math.max(1, (o.xlabel || "").length * 0.52)
+    ), yNameSize = Math.min(
+      font,
+      (yAxis - 18) / Math.max(1, (o.ylabel || "").length * 0.52)
+    );
+    html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset}" y="${xAxis + font + 9}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12}" y="${top - 10}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
     for (const guide2 of o.guides || []) {
       if (guide2.axis === "x" && guide2.value >= o.xmin && guide2.value <= o.xmax) {
         let x = X(guide2.value);
@@ -1825,14 +1965,34 @@
     for (const c of o.curves)
       if (c.fn)
         html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? c.strokeWidth || 1.3333 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
-    for (const p of o.points || []) {
-      if (p.x < o.xmin || p.x > o.xmax || p.y < o.ymin || p.y > o.ymax) continue;
-      const x = X(p.x), y = Y(p.y);
-      if (p.project)
-        html += `<path d="M${yAxis} ${y}H${x}V${xAxis}" fill="none" stroke="${ink}" stroke-dasharray="5 4" stroke-width="1"/>`;
-      html += `<circle cx="${x}" cy="${y}" r="3" fill="${ink}"/><text x="${Math.min(w - right - 6, Math.max(left + 6, x + 10))}" y="${Math.max(top + font, y - 12)}" text-anchor="${x > w - right - 120 ? "end" : "start"}">${xml(p.label || `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`)}</text>`;
+    html += "</g>";
+    const occupied = [];
+    for (const p of visiblePoints) {
+      const x = X(p.x), y = Y(p.y), label = p.label || `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`;
+      if (p.project && Math.abs(p.x) > 1e-9 && Math.abs(p.y) > 1e-9)
+        html += `<path class="point-projection" d="M${yAxis} ${y}H${x}V${xAxis}" fill="none" stroke="${ink}" stroke-dasharray="4 3" stroke-width=".9"/>`;
+      const lw = label.length * font * 0.56;
+      const candidates = [
+        { x: x + 7, y: y - 8, anchor: "start" },
+        { x: x + 7, y: y + font + 7, anchor: "start" },
+        { x: x - 7, y: y - 8, anchor: "end" },
+        { x: x - 7, y: y + font + 7, anchor: "end" }
+      ];
+      const valid = (c2) => {
+        const l2 = c2.anchor === "end" ? c2.x - lw : c2.x;
+        return l2 >= 3 && l2 + lw < w - 3 && c2.y - font > 2 && c2.y < h - 3 && !occupied.some(
+          (r) => l2 < r.r && l2 + lw > r.l && c2.y > r.t && c2.y - font < r.b
+        );
+      };
+      const c = candidates.find(valid) || candidates[0], l = c.anchor === "end" ? c.x - lw : c.x;
+      occupied.push({ l, r: l + lw, t: c.y - font, b: c.y });
+      html += `<g class="fixed-point"><circle cx="${x}" cy="${y}" r="3.5" fill="${ink}"/><text x="${c.x}" y="${c.y}" text-anchor="${c.anchor}" font-weight="700" font-style="${p.label ? "italic" : "normal"}">${xml(label)}</text></g>`;
     }
-    html += '</g><g id="graph-trace" aria-hidden="true"></g></g>';
+    html += '<g id="graph-trace" aria-hidden="true"></g></g>';
+    html = html.replace(
+      "__LABEL_MASK__",
+      `<mask id="label-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="#fff"/>${labelHoles.join("")}</mask>`
+    );
     return {
       inner: html,
       geometry: g,
@@ -2086,7 +2246,7 @@
   function mountFunctions(ctx) {
     const { $: $2, select: select2, check: check2, shell: shell2, common: common2, render: render2, state: state2, toast: toast2 } = ctx, s = state2.functions, free = s.mode === "free";
     s.active = 0;
-    const c = s.curves[0], f = s.free, rows = free ? f.equations : s.comparisons, windowState = free ? f : s;
+    const c = s.curves[0], f = s.free, rows = free ? f.equations : s.comparisons, windowState = free ? f : s, pinned = free ? f.points : s.points || (s.points = []);
     let options, raf = 0, previous = 0, paletteTarget = null;
     const playing = /* @__PURE__ */ new Map();
     const nav = `<div class="function-tabs" role="group" aria-label="Modo do laborat\xF3rio"><button id="mode-families" class="${!free ? "selected" : ""}" aria-pressed="${!free}">Fam\xEDlias de fun\xE7\xF5es</button><button id="mode-free" class="${free ? "selected" : ""}" aria-pressed="${free}">Gr\xE1fico para avalia\xE7\xF5es</button></div>`;
@@ -2132,13 +2292,44 @@
           ["tan", "Tangente"]
         ],
         c.trig
-      ) : ""}<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar fun\xE7\xF5es</button></div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>`;
+      ) : ""}<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar fun\xE7\xF5es</button></div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>${specialControls()}<div id="point-list">${pointList()}</div>`;
     }
     function assessmentControls() {
-      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${check2("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check2("radians", "Eixo x em radianos", f.radians)}${check2("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem it\xE1lico.</p></details><details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check2("point-project", "Proje\xE7\xF5es nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>\uFF0B Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura \xB7 cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente \xB7 SVG em tamanho f\xEDsico \xB7 PNG a 300 dpi.</p></details>`;
+      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select2(
+        "tick-mode",
+        "Valores nos eixos",
+        [
+          ["regular", "Gradua\xE7\xE3o regular"],
+          ["points", "Apenas pontos destacados"]
+        ],
+        f.tickMode
+      )}${check2("show-origin", "Mostrar zero na origem", f.showOrigin)}${check2("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check2("radians", "Eixo x em radianos", f.radians)}${check2("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem it\xE1lico.</p></details>${specialControls()}<details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check2("point-project", "Proje\xE7\xF5es nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>\uFF0B Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura \xB7 cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente \xB7 SVG em tamanho f\xEDsico \xB7 PNG a 300 dpi.</p></details>`;
+    }
+    function specialControls() {
+      return `<details class="control-section" id="special-panel"><summary>Fixar pontos especiais</summary>${select2(
+        "special-kind",
+        "Tipo de ponto",
+        [
+          ["intersections", "Interse\xE7\xF5es"],
+          ["roots", "Zeros das fun\xE7\xF5es"],
+          ["extrema", "M\xE1ximos e m\xEDnimos"]
+        ],
+        "intersections"
+      )}<button id="find-special" class="wide-button">Localizar na janela atual</button><p class="small">Fixe pontos para inclu\xED-los no SVG e no PNG. As coordenadas fixadas permanecem mesmo ao modificar a fun\xE7\xE3o.</p><div id="special-results" aria-live="polite"></div></details>`;
+    }
+    function refreshPoints() {
+      $2("#point-list").innerHTML = pointList();
+      if ($2("#add-point")) $2("#add-point").disabled = pinned.length >= 12;
+      document.querySelectorAll("[data-remove-point]").forEach(
+        (el) => el.onclick = () => {
+          pinned.splice(+el.dataset.removePoint, 1);
+          refreshPoints();
+          draw();
+        }
+      );
     }
     function pointList() {
-      return f.points.map(
+      return pinned.map(
         (p, i) => `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">\xD7</button></div>`
       ).join("");
     }
@@ -2154,6 +2345,8 @@
           if (q.visible)
             curves.push({
               fn,
+              domainMin: q.min.trim() ? finiteInput(q.min) : -Infinity,
+              domainMax: q.max.trim() ? finiteInput(q.max) : Infinity,
               color: q.color,
               strokeWidth: (q.strokeWidth ?? 1) * 96 / 72,
               name: names[i + (free ? 0 : 1)],
@@ -2192,6 +2385,8 @@
         if (c.visible && !error) {
           curves.unshift({
             fn: (x) => familyValue(c, x),
+            domainMin: c.domain ? c.min : -Infinity,
+            domainMax: c.domain ? c.max : Infinity,
             color: c.color,
             name: "f",
             label: "f(x) = " + familyFormula(c),
@@ -2233,7 +2428,8 @@
           legend: false,
           radians: c.type === "trigonometrica",
           grid: true,
-          guides
+          guides,
+          points: pinned
         };
         let summary = "f(x) = " + familyFormula(c);
         const T = period(c);
@@ -2241,7 +2437,7 @@
           summary += T ? ` \xB7 T = ${c.trig === "tan" ? "\u03C0" : "2\u03C0"}/|c| = ${c.trig === "tan" ? "\u03C0" : "2\u03C0"}/|${decimal(c.c)}| \u2248 ${decimal(T)} rad` : " \xB7 Sem per\xEDodo fundamental positivo";
         if (c.type === "trigonometrica" && c.trig !== "tan")
           summary += ` \xB7 Amplitude = |b| = ${decimal(Math.abs(c.b))}`;
-        $2("#graph-summary").textContent = summary;
+        $2("#graph-summary").innerHTML = c.type === "trigonometrica" ? trigSummaryMathML(c) : xml(summary);
         $2("#function-details").innerHTML = `<p>Dom\xEDnio: ${xml(naturalDomain(c))}${c.domain ? ` \u2229 [${decimal(c.min)}; ${decimal(c.max)}]` : ""}.</p>${algebraDetails(c)}${c.type === "logistica" ? "<p>Crescimento log\xEDstico: para b \u2260 0, os patamares da curva completa s\xE3o y = d e y = a + d.</p>" : ""}${c.type === "trigonometrica" ? "<p>As linhas tracejadas mostram os extremos no dom\xEDnio escolhido (seno e cosseno) ou as ass\xEDntotas (tangente). Os \xE2ngulos est\xE3o em radianos.</p>" : ""}<div class="table-scroll"><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${decimal(familyValue(c, x))}</td>`).join("")}</tr></tbody></table></div>`;
         if ($2("#explore-logistic"))
           $2("#explore-logistic").onclick = () => changeFamily("logistica");
@@ -2421,6 +2617,14 @@
           f[k] = e.target.value;
           draw();
         };
+      $2("#tick-mode").onchange = (e) => {
+        f.tickMode = e.target.value;
+        draw();
+      };
+      $2("#show-origin").onchange = (e) => {
+        f.showOrigin = e.target.checked;
+        draw();
+      };
       for (const k of ["radians", "grid"])
         $2("#" + k).onchange = (e) => {
           f[k] = e.target.checked;
@@ -2440,16 +2644,13 @@
         $2("#size-error").textContent = "";
         draw();
       };
-      const bindPoints = () => document.querySelectorAll("[data-remove-point]").forEach(
-        (el) => el.onclick = () => {
-          f.points.splice(+el.dataset.removePoint, 1);
-          $2("#point-list").innerHTML = pointList();
-          $2("#add-point").disabled = false;
-          bindPoints();
-          draw();
-        }
-      );
-      bindPoints();
+      for (const id of ["width-cm", "height-cm"])
+        $2("#" + id).onkeydown = (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            $2("#apply-size").click();
+          }
+        };
       $2("#add-point").onclick = () => {
         try {
           if (f.points.length >= 12) return;
@@ -2460,9 +2661,7 @@
             project: $2("#point-project").checked
           });
           $2("#point-error").textContent = "";
-          $2("#point-list").innerHTML = pointList();
-          $2("#add-point").disabled = f.points.length >= 12;
-          bindPoints();
+          refreshPoints();
           draw();
         } catch (e) {
           $2("#point-error").textContent = e.message;
@@ -2605,6 +2804,40 @@
           toast2(e.message);
         }
       };
+    refreshPoints();
+    $2("#find-special").onclick = () => {
+      const found = findSpecialPoints(
+        options.curves,
+        options,
+        $2("#special-kind").value
+      );
+      $2("#special-results").innerHTML = found.length ? found.slice(0, 30).map(
+        (p, i) => `<button class="special-result" data-pin-special="${i}">\uFF0B Fixar ${xml(p.kind)} ${xml(p.description)} \xB7 (${decimal(p.x)}; ${decimal(p.y)})</button>`
+      ).join("") : "<p class=small>Nenhum ponto desse tipo encontrado na janela atual.</p>";
+      document.querySelectorAll("[data-pin-special]").forEach(
+        (el) => el.onclick = () => {
+          if (pinned.length >= 12) {
+            toast2("Limite de 12 pontos fixados. Remova um para continuar.");
+            return;
+          }
+          const p = found[+el.dataset.pinSpecial];
+          if (pinned.some(
+            (q) => Math.abs(q.x - p.x) < 1e-7 && Math.abs(q.y - p.y) < 1e-7
+          )) {
+            el.disabled = true;
+            el.textContent = "Ponto j\xE1 fixado";
+            return;
+          }
+          const used = new Set(pinned.map((q) => q.label));
+          const label = "ABCDEFGHIJKL".split("").find((l) => !used.has(l)) || "P";
+          pinned.push({ x: p.x, y: p.y, label, project: true });
+          el.disabled = true;
+          el.textContent = `${label} fixado \xB7 (${decimal(p.x)}; ${decimal(p.y)})`;
+          refreshPoints();
+          draw();
+        }
+      );
+    };
     common2();
     return () => {
       stopAll();

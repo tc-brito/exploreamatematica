@@ -2458,3 +2458,27 @@ body.presenting .function-lab .function-notes {
 .expression-row > .compact-field {
   margin-top: 8px;
 }
+.graph-summary:has(math) {
+  min-height: 58px;
+  height: auto;
+  padding-block: 7px;
+  overflow-x: auto;
+}
+.graph-summary math {
+  font-size: 17px;
+  font-style: normal;
+  font-family: "Cambria Math", math;
+}
+.special-result {
+  width: 100%;
+  text-align: left;
+  padding: 9px;
+  margin-top: 6px;
+  font-size: 11px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+}
+.special-result:disabled {
+  opacity: 0.65;
+}

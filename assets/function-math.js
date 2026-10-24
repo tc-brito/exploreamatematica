@@ -94,6 +94,7 @@ export function defaultFunctions() {
     active: 0,
     curves: [makeCurve()],
     comparisons: [makeExpression(2)],
+    points: [],
     xmin: -10,
     xmax: 10,
     ymin: -6,
@@ -110,6 +111,8 @@ export function defaultFunctions() {
       widthCm: 14,
       heightCm: 9,
       axesBold: false,
+      showOrigin: false,
+      tickMode: "regular",
       xstep: "",
       ystep: "",
       xlabel: "x",
@@ -215,6 +218,22 @@ export function familyMathML(c) {
       op(")"),
   }[c.type];
   return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow>${body}</mrow></math>`;
+}
+export function trigSummaryMathML(c) {
+  const esc = (s) =>
+    String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  const numerator =
+      c.trig === "tan"
+        ? `<mi mathvariant="normal">π</mi>`
+        : `<mrow><mn>2</mn><mi mathvariant="normal">π</mi></mrow>`,
+    T = period(c);
+  const body = T
+    ? `<mspace width=".35em"/><mo>·</mo><mspace width=".35em"/><mi mathvariant="normal">T</mi><mo>=</mo><mfrac>${numerator}<mrow><mo>|</mo><mi mathvariant="normal">c</mi><mo>|</mo></mrow></mfrac><mo>=</mo><mfrac>${numerator}<mrow><mo>|</mo><mn>${num(c.c)}</mn><mo>|</mo></mrow></mfrac><mo>≈</mo><mn>${num(T)}</mn><mspace width=".3em"/><mtext>rad</mtext>`
+    : "<mtext> · Sem período fundamental positivo</mtext>";
+  return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mstyle mathvariant="normal"><mtext>f(x) = ${esc(familyFormula(c))}</mtext>${body}${c.trig !== "tan" ? `<mtext> · Amplitude = |b| = ${num(Math.abs(c.b))}</mtext>` : ""}</mstyle></math>`;
 }
 export function familyFormula(c, symbolic = false) {
   const trig = c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen";
@@ -526,6 +545,16 @@ export function sanitizeFunctions(raw) {
     out.curves = [c];
   }
   out.active = Math.round(finite(raw.active, 0, 0, out.curves.length - 1));
+  if (Array.isArray(raw.points))
+    out.points = raw.points
+      .slice(0, 12)
+      .filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y))
+      .map((p) => ({
+        x: p.x,
+        y: p.y,
+        label: String(p.label || "").slice(0, 24),
+        project: p.project !== false,
+      }));
   out.mode = raw.mode === "free" ? "free" : "families";
   for (const k of ["xmin", "xmax", "ymin", "ymax"])
     out[k] = finite(raw[k], out[k], -10000, 10000);
@@ -568,6 +597,8 @@ export function sanitizeFunctions(raw) {
     out.free.widthCm = finite(f.widthCm, 14, 6, 30);
     out.free.heightCm = finite(f.heightCm, 9, 4, 25);
     out.free.axesBold = f.axesBold === true;
+    out.free.showOrigin = f.showOrigin === true;
+    out.free.tickMode = f.tickMode === "points" ? "points" : "regular";
     for (const k of ["xstep", "ystep"]) {
       const rawStep = String(f[k] ?? "").slice(0, 40);
       try {

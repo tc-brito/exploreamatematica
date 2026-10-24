@@ -21,23 +21,61 @@ function niceStep(span, space) {
     p = 10 ** Math.floor(Math.log10(raw));
   return [1, 2, 2.5, 5, 10].map((x) => x * p).find((x) => x >= raw) || 10 * p;
 }
+export function axisNumber(n, o = {}) {
+  return o.professional
+    ? Number(n.toFixed(4))
+        .toLocaleString("pt-BR", {
+          maximumFractionDigits: 4,
+          useGrouping: true,
+        })
+        .replaceAll(".", " ")
+    : decimal(n, 4);
+}
+export function radianTick(x, top, value, font = 15) {
+  const label = piLabel(value),
+    m = label.match(/^([−-]?)([^/]+)\/(\d+)$/);
+  if (!m)
+    return `<text x="${x}" y="${top + font}" text-anchor="middle">${xml(label)}</text>`;
+  const small = font * 0.9,
+    width = Math.max(m[2].length, m[3].length) * small * 0.56 + 4;
+  return `<g class="radian-fraction" aria-label="${xml(label)}" font-style="normal" font-size="${small}">${m[1] ? `<text x="${x - width / 2 - 3}" y="${top + font * 1.25}" text-anchor="end">−</text>` : ""}<text x="${x}" y="${top + small}" text-anchor="middle">${xml(m[2])}</text><line x1="${x - width / 2}" x2="${x + width / 2}" y1="${top + font}" y2="${top + font}" stroke="currentColor" stroke-width="0.8"/><text x="${x}" y="${top + font * 1.95}" text-anchor="middle">${xml(m[3])}</text></g>`;
+}
 export function graphGeometry(o) {
   const w = o.width || 900,
     h = o.height || 530,
-    font = o.professional ? 14.6667 : 15,
-    left = o.professional
-      ? Math.max(
-          44,
-          Math.min(w * 0.4, (o.ylabel || "").length * font * 0.52 + 16),
-        )
-      : 52,
-    right = o.professional ? 25 : 28,
+    font = o.professional ? 14.6667 : 18,
+    left = Math.max(
+      52,
+      Math.min(w * 0.35, (o.ylabel || "").length * font * 0.52 + 18),
+      Math.min(
+        w * 0.25,
+        Math.max(axisNumber(o.ymin, o).length, axisNumber(o.ymax, o).length) *
+          font *
+          0.5 +
+          16,
+      ),
+    ),
+    xNameOffset = Math.max(
+      10,
+      (o.radians ? piLabel(o.xmax).split("/")[0] : axisNumber(o.xmax, o))
+        .length *
+        font *
+        0.28 +
+        4,
+    ),
+    right = Math.max(
+      30,
+      Math.min(
+        w * 0.32,
+        (o.xlabel || "").length * font * 0.52 + xNameOffset + 6,
+      ),
+    ),
     legendCount = o.legend
       ? o.curves.filter((c) => c.showEquation !== false).length
       : 0,
     legendStep = legendCount ? Math.min(20, (h * 0.4 - 20) / legendCount) : 20,
     top = legendCount ? Math.max(36, 20 + legendCount * legendStep) : 28,
-    bottom = o.professional ? 54 : 38,
+    bottom = o.radians ? 66 : 54,
     W = w - left - right,
     H = h - top - bottom,
     X = (x) => left + ((x - o.xmin) / (o.xmax - o.xmin)) * W,
@@ -47,6 +85,7 @@ export function graphGeometry(o) {
     h,
     font,
     legendStep,
+    xNameOffset,
     left,
     right,
     top,
@@ -188,53 +227,113 @@ export function buildGraph(o) {
         ? o.ystep
         : niceStep(o.ymax - o.ymin, Math.max(3, H / 58)),
     id = "graph-clip";
-  let html = `<defs><clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
+  const labelHoles = [];
+  let html = `<defs>__LABEL_MASK__<clipPath id="${id}"><rect x="${left}" y="${top}" width="${W}" height="${H}"/></clipPath><marker id="axis-arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L7 3L0 6" fill="none" stroke="${ink}" stroke-width="1.05"/></marker></defs><g font-family="${family}" font-size="${font}" fill="${ink}">`;
   if (o.legend)
     o.curves
       .filter((c) => c.showEquation !== false)
       .forEach((c, i) => {
         html += `<line x1="${left}" x2="${left + 23}" y1="${19 + i * g.legendStep}" y2="${19 + i * g.legendStep}" stroke="${c.color}" stroke-width="1.6"/><text x="${left + 33}" y="${24 + i * g.legendStep}" font-size="${Math.min(font, g.legendStep - 2)}">${xml(c.label)}</text>`;
       });
-  const xstride = Math.max(1, Math.ceil((o.xmax - o.xmin) / xstep / 200)),
-    ystride = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / 200));
-  const xlabels = Math.max(
-      xstride,
-      Math.ceil((o.xmax - o.xmin) / xstep / (W / 35)),
+  const regular = (lo, hi, step) => {
+    const stride = Math.max(1, Math.ceil((hi - lo) / step / 200)),
+      values = [];
+    for (
+      let i = Math.ceil(lo / step / stride) * stride;
+      i <= Math.floor(hi / step);
+      i += stride
+    )
+      values.push(i * step);
+    return values;
+  };
+  const xs = regular(o.xmin, o.xmax, xstep),
+    ys = regular(o.ymin, o.ymax, ystep);
+  // The mesh and axes share the same exact viewport rectangle.
+  html += `<g class="graph-grid" clip-path="url(#${id})" mask="url(#label-mask)" fill="none" stroke="${grid}" stroke-width=".65">`;
+  if (o.grid) {
+    for (const x of xs) html += `<path d="M${X(x)} ${top}V${h - bottom}"/>`;
+    for (const y of ys) html += `<path d="M${left} ${Y(y)}H${w - right}"/>`;
+  }
+  html += "</g>";
+  const visiblePoints = (o.points || []).filter(
+    (p) => p.x >= o.xmin && p.x <= o.xmax && p.y >= o.ymin && p.y <= o.ymax,
+  );
+  const ticks = (values, axis, step) => {
+    const special = visiblePoints
+      .filter((p) => p.project || Math.abs(p[axis === "x" ? "y" : "x"]) < 1e-9)
+      .map((p) => p[axis]);
+    const all = (o.tickMode === "points" ? [] : values).map((v) => ({
+      v,
+      special: false,
+    }));
+    for (const v of special) {
+      const same = all.find((p) => Math.abs(p.v - v) < step * 1e-7);
+      if (same) same.special = true;
+      else all.push({ v, special: true });
+    }
+    return all.sort((a, b) => a.v - b.v);
+  };
+  const xt = ticks(xs, "x", xstep),
+    yt = ticks(ys, "y", ystep),
+    xSkip = Math.max(
+      1,
+      Math.ceil((o.xmax - o.xmin) / xstep / (W / (o.radians ? 58 : 40))),
     ),
-    ylabels = Math.max(
-      ystride,
-      Math.ceil((o.ymax - o.ymin) / ystep / (H / 25)),
+    ySkip = Math.max(1, Math.ceil((o.ymax - o.ymin) / ystep / (H / 27)));
+  for (const t of xt) {
+    const u = X(t.v);
+    html += `<path d="M${u} ${xAxis - 3}v6" stroke="${ink}" stroke-width=".9"/>`;
+    const crowded =
+      !t.special &&
+      xt.some((p) => p.special && Math.abs(X(p.v) - u) < (o.radians ? 42 : 28));
+    if (
+      Math.abs(t.v) > xstep * 1e-7 &&
+      !crowded &&
+      (t.special || Math.abs(Math.round(t.v / xstep)) % xSkip === 0)
+    ) {
+      const text = o.radians ? piLabel(t.v) : axisNumber(t.v, o),
+        frac = o.radians && text.includes("/"),
+        width =
+          (frac ? text.split("/")[0].length : text.length) * font * 0.58 + 8;
+      labelHoles.push(
+        `<rect x="${u - width / 2}" y="${xAxis + 5}" width="${width}" height="${frac ? font * 2.1 + 6 : font + 8}" fill="#000"/>`,
+      );
+      html += o.radians
+        ? radianTick(u, xAxis + 8, t.v, font)
+        : `<text x="${u}" y="${xAxis + font + 8}" text-anchor="middle">${xml(text)}</text>`;
+    }
+  }
+  for (const t of yt) {
+    const v = Y(t.v);
+    html += `<path d="M${yAxis - 3} ${v}h6" stroke="${ink}" stroke-width=".9"/>`;
+    const crowded =
+      !t.special &&
+      yt.some((p) => p.special && Math.abs(Y(p.v) - v) < font * 1.4);
+    if (
+      Math.abs(t.v) > ystep * 1e-7 &&
+      !crowded &&
+      (t.special || Math.abs(Math.round(t.v / ystep)) % ySkip === 0)
+    ) {
+      const text = axisNumber(t.v, o),
+        width = text.length * font * 0.58 + 6;
+      labelHoles.push(
+        `<rect x="${yAxis - 13 - width}" y="${v - font * 0.7}" width="${width + 6}" height="${font + 5}" fill="#000"/>`,
+      );
+      html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(text)}</text>`;
+    }
+  }
+  html += `<g class="graph-axes" fill="none" stroke="${ink}" stroke-width="1.1"><path d="M${left} ${xAxis}H${w - right}" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top}" marker-end="url(#axis-arrow)"/></g>`;
+  if (o.showOrigin && o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
+    html += `<text class="origin-label" x="${yAxis - 10}" y="${xAxis + font + 8}" text-anchor="end">0</text>`;
+  const xNameSize = Math.min(
+      font,
+      (right - g.xNameOffset - 4) / Math.max(1, (o.xlabel || "").length * 0.52),
+    ),
+    yNameSize = Math.min(
+      font,
+      (yAxis - 18) / Math.max(1, (o.ylabel || "").length * 0.52),
     );
-  for (
-    let i = Math.ceil(o.xmin / xstep / xstride) * xstride;
-    i <= Math.floor(o.xmax / xstep);
-    i += xstride
-  ) {
-    const x = i * xstep,
-      u = X(x);
-    if (o.grid)
-      html += `<path d="M${u} ${top}V${h - bottom}" stroke="${grid}" stroke-width=".8"/>`;
-    html += `<path d="M${u} ${xAxis - 4}v8" stroke="${ink}"/>`;
-    if (Math.abs(x) > xstep * 1e-6 && i % xlabels === 0)
-      html += `<text x="${u}" y="${xAxis + font + 7 > h - 8 ? xAxis - 9 : xAxis + font + 7}" text-anchor="middle">${xml(o.radians ? piLabel(x) : decimal(x, 4))}</text>`;
-  }
-  for (
-    let i = Math.ceil(o.ymin / ystep / ystride) * ystride;
-    i <= Math.floor(o.ymax / ystep);
-    i += ystride
-  ) {
-    const y = i * ystep,
-      v = Y(y);
-    if (o.grid)
-      html += `<path d="M${left} ${v}H${w - right}" stroke="${grid}" stroke-width=".8"/>`;
-    html += `<path d="M${yAxis - 4} ${v}h8" stroke="${ink}"/>`;
-    if (Math.abs(y) > ystep * 1e-6 && i % ylabels === 0)
-      html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(decimal(y, 4))}</text>`;
-  }
-  html += `<path d="M${left} ${xAxis}H${w - right + 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top - 8}" stroke="${ink}" stroke-width="1.05" marker-end="url(#axis-arrow)"/>`;
-  if (o.xmin <= 0 && o.xmax >= 0 && o.ymin <= 0 && o.ymax >= 0)
-    html += `<text x="${yAxis - 10}" y="${xAxis + font + 7}" text-anchor="end">0</text>`;
-  html += `<text x="${w - right + 9}" y="${o.professional ? xAxis + 2 * font + 14 : xAxis - 12}" text-anchor="end" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text x="${o.professional ? yAxis - 13 : yAxis + 13}" y="${top - 9}" text-anchor="${o.professional ? "end" : "start"}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})">`;
+  html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset}" y="${xAxis + font + 9}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12}" y="${top - 10}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
   for (const guide of o.guides || []) {
     if (guide.axis === "x" && guide.value >= o.xmin && guide.value <= o.xmax) {
       let x = X(guide.value);
@@ -251,15 +350,45 @@ export function buildGraph(o) {
   for (const c of o.curves)
     if (c.fn)
       html += `<path d="${curvePath(c.fn, o, c.breaks || [])}" fill="none" stroke="${c.color}" stroke-width="${o.professional ? c.strokeWidth || 1.3333 : 1.8}" stroke-linejoin="round" stroke-linecap="round"><title>${xml(c.label)}</title></path>`;
-  for (const p of o.points || []) {
-    if (p.x < o.xmin || p.x > o.xmax || p.y < o.ymin || p.y > o.ymax) continue;
+  html += "</g>";
+  const occupied = [];
+  for (const p of visiblePoints) {
     const x = X(p.x),
-      y = Y(p.y);
-    if (p.project)
-      html += `<path d="M${yAxis} ${y}H${x}V${xAxis}" fill="none" stroke="${ink}" stroke-dasharray="5 4" stroke-width="1"/>`;
-    html += `<circle cx="${x}" cy="${y}" r="3" fill="${ink}"/><text x="${Math.min(w - right - 6, Math.max(left + 6, x + 10))}" y="${Math.max(top + font, y - 12)}" text-anchor="${x > w - right - 120 ? "end" : "start"}">${xml(p.label || `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`)}</text>`;
+      y = Y(p.y),
+      label =
+        p.label ||
+        `(${o.radians ? piLabel(p.x) : decimal(p.x)}; ${decimal(p.y)})`;
+    if (p.project && Math.abs(p.x) > 1e-9 && Math.abs(p.y) > 1e-9)
+      html += `<path class="point-projection" d="M${yAxis} ${y}H${x}V${xAxis}" fill="none" stroke="${ink}" stroke-dasharray="4 3" stroke-width=".9"/>`;
+    const lw = label.length * font * 0.56;
+    const candidates = [
+      { x: x + 7, y: y - 8, anchor: "start" },
+      { x: x + 7, y: y + font + 7, anchor: "start" },
+      { x: x - 7, y: y - 8, anchor: "end" },
+      { x: x - 7, y: y + font + 7, anchor: "end" },
+    ];
+    const valid = (c) => {
+      const l = c.anchor === "end" ? c.x - lw : c.x;
+      return (
+        l >= 3 &&
+        l + lw < w - 3 &&
+        c.y - font > 2 &&
+        c.y < h - 3 &&
+        !occupied.some(
+          (r) => l < r.r && l + lw > r.l && c.y > r.t && c.y - font < r.b,
+        )
+      );
+    };
+    const c = candidates.find(valid) || candidates[0],
+      l = c.anchor === "end" ? c.x - lw : c.x;
+    occupied.push({ l, r: l + lw, t: c.y - font, b: c.y });
+    html += `<g class="fixed-point"><circle cx="${x}" cy="${y}" r="3.5" fill="${ink}"/><text x="${c.x}" y="${c.y}" text-anchor="${c.anchor}" font-weight="700" font-style="${p.label ? "italic" : "normal"}">${xml(label)}</text></g>`;
   }
-  html += '</g><g id="graph-trace" aria-hidden="true"></g></g>';
+  html += '<g id="graph-trace" aria-hidden="true"></g></g>';
+  html = html.replace(
+    "__LABEL_MASK__",
+    `<mask id="label-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="${w}" height="${h}"><rect width="${w}" height="${h}" fill="#fff"/>${labelHoles.join("")}</mask>`,
+  );
   return {
     inner: html,
     geometry: g,

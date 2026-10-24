@@ -46,7 +46,11 @@ Abra `http://127.0.0.1:4173`. Para outra porta: `PORT=4175 npm start`.
 
 - Até cinco expressões, oito cores, pontos com rótulos e projeções nos eixos.
 - Eixo x numérico ou em radianos; nomes dos eixos sem itálico, com negrito opcional; janela e dimensões em centímetros.
-- Símbolo y à esquerda do eixo vertical e x abaixo do horizontal. Passos independentes nos eixos (incluindo pi/2), com espaçamento automático quando vazios. Graduações muito densas omitem rótulos para evitar sobreposição.
+- Símbolo y à esquerda do eixo vertical e x abaixo do horizontal em todos os gráficos. Zero oculto por padrão, com opção de exibição no editor de avaliações. Nomes dos eixos com margens próprias. Malha recortada no mesmo retângulo dos eixos. Passos independentes nos eixos (incluindo pi/2), com espaçamento automático quando vazios. Graduações muito densas omitem rótulos para evitar sobreposição.
+- Modo de graduação regular ou somente valores dos pontos destacados, com separação de milhares por espaço. Marcadores nos eixos aparecem inteiros; rótulos e números recebem espaço livre das linhas.
+- Enter também aplica largura/altura em centímetros.
+- Frações de radianos compostas em SVG (numerador e denominador empilhados) e cálculo do período com frações MathML.
+- Fixar pontos especiais: localiza zeros, interseções e extremos na janela atual. Pontos fixados mantêm suas coordenadas e são incluídos no SVG/PNG; podem ser removidos individualmente.
 - Espessura independente por curva entre 0,25 e 6 pt, preservada nas exportações.
 - Domínio e opção de mostrar equação junto de cada expressão. Malha opcional; traços finos e fonte Calibri quando instalada (Arial/sans-serif como alternativa). A Calibri não é redistribuída no projeto.
 - Exportação **SVG vetorial em centímetros e PNG a 300 dpi com fundo transparente**, sem marca d’água. O PNG inclui metadados de resolução física.
@@ -68,7 +72,7 @@ npm test
 
 A geração usa esbuild 0.28.2 pelo npm e pode precisar de internet na primeira execução. O site pronto não depende de serviços externos.
 
-Os 32 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
+Os 38 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
 
 ## Estrutura
 

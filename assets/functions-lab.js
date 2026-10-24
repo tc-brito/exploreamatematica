@@ -1,3 +1,4 @@
+import { findSpecialPoints } from "./graph-analysis.js";
 import {
   FAMILIES,
   PALETTE,
@@ -7,6 +8,7 @@ import {
   familyValue,
   familyFormula,
   familyMathML,
+  trigSummaryMathML,
   familyError,
   naturalDomain,
   period,
@@ -99,7 +101,8 @@ export function mountFunctions(ctx) {
   const c = s.curves[0],
     f = s.free,
     rows = free ? f.equations : s.comparisons,
-    windowState = free ? f : s;
+    windowState = free ? f : s,
+    pinned = free ? f.points : (s.points ||= []);
   let options,
     raf = 0,
     previous = 0,
@@ -167,13 +170,45 @@ export function mountFunctions(ctx) {
             c.trig,
           )
         : ""
-    }<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">▶</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar animações</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Domínio da função principal</summary><p id="natural-domain" class="small"></p>${check("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "Início", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras funções</h2><p class="small">Digite até 5 expressões. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar funções</button></div><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(s)}</details>`;
+    }<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">▶</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar animações</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Domínio da função principal</summary><p id="natural-domain" class="small"></p>${check("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "Início", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras funções</h2><p class="small">Digite até 5 expressões. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar funções</button></div><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(s)}</details>${specialControls()}<div id="point-list">${pointList()}</div>`;
   }
   function assessmentControls() {
-    return `<div class="control-title">Gráfico para avaliações</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as funções</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para π. Domínio vazio mantém o domínio natural.</p></details><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Automático · ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Automático · ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${check("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check("radians", "Eixo x em radianos", f.radians)}${check("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem itálico.</p></details><details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check("point-project", "Projeções nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>＋ Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura · cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente · SVG em tamanho físico · PNG a 300 dpi.</p></details>`;
+    return `<div class="control-title">Gráfico para avaliações</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as funções</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para π. Domínio vazio mantém o domínio natural.</p></details><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Automático · ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Automático · ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select(
+      "tick-mode",
+      "Valores nos eixos",
+      [
+        ["regular", "Graduação regular"],
+        ["points", "Apenas pontos destacados"],
+      ],
+      f.tickMode,
+    )}${check("show-origin", "Mostrar zero na origem", f.showOrigin)}${check("axes-bold", "Nomes dos eixos em negrito", f.axesBold)}${check("radians", "Eixo x em radianos", f.radians)}${check("grid", "Mostrar malha", f.grid)}<p class="small">Fonte: Calibri, quando instalada; alternativa sem serifa nos demais dispositivos. Nomes dos eixos sem itálico.</p></details>${specialControls()}<details class="control-section" id="points-panel"><summary>Inserir coordenadas</summary><div class="field-grid">${field("point-x", "Coordenada x", "0")}${field("point-y", "Coordenada y", "0")}</div>${field("point-label", "Nome do ponto (opcional)", "", 'maxlength="24"')}${check("point-project", "Projeções nos eixos", true)}<button id="add-point" class="wide-button" ${f.points.length >= 12 ? "disabled" : ""}>＋ Inserir ponto</button><p class="small error" id="point-error" role="status"></p><div id="point-list">${pointList()}</div></details><details class="control-section" open><summary>Tamanho da figura · cm</summary><div class="field-grid">${numeric("width-cm", "Largura (cm)", f.widthCm, 'min="6" max="30"')}${numeric("height-cm", "Altura (cm)", f.heightCm, 'min="4" max="25"')}</div><button id="apply-size" class="wide-button">Aplicar tamanho</button><p class="small error" id="size-error" role="status"></p><p class="small">Fundo transparente · SVG em tamanho físico · PNG a 300 dpi.</p></details>`;
+  }
+  function specialControls() {
+    return `<details class="control-section" id="special-panel"><summary>Fixar pontos especiais</summary>${select(
+      "special-kind",
+      "Tipo de ponto",
+      [
+        ["intersections", "Interseções"],
+        ["roots", "Zeros das funções"],
+        ["extrema", "Máximos e mínimos"],
+      ],
+      "intersections",
+    )}<button id="find-special" class="wide-button">Localizar na janela atual</button><p class="small">Fixe pontos para incluí-los no SVG e no PNG. As coordenadas fixadas permanecem mesmo ao modificar a função.</p><div id="special-results" aria-live="polite"></div></details>`;
+  }
+  function refreshPoints() {
+    $("#point-list").innerHTML = pointList();
+    if ($("#add-point")) $("#add-point").disabled = pinned.length >= 12;
+    document.querySelectorAll("[data-remove-point]").forEach(
+      (el) =>
+        (el.onclick = () => {
+          pinned.splice(+el.dataset.removePoint, 1);
+          refreshPoints();
+          draw();
+        }),
+    );
   }
   function pointList() {
-    return f.points
+    return pinned
       .map(
         (p, i) =>
           `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">×</button></div>`,
@@ -193,6 +228,8 @@ export function mountFunctions(ctx) {
         if (q.visible)
           curves.push({
             fn,
+            domainMin: q.min.trim() ? finiteInput(q.min) : -Infinity,
+            domainMax: q.max.trim() ? finiteInput(q.max) : Infinity,
             color: q.color,
             strokeWidth: ((q.strokeWidth ?? 1) * 96) / 72,
             name: names[i + (free ? 0 : 1)],
@@ -234,6 +271,8 @@ export function mountFunctions(ctx) {
       if (c.visible && !error) {
         curves.unshift({
           fn: (x) => familyValue(c, x),
+          domainMin: c.domain ? c.min : -Infinity,
+          domainMax: c.domain ? c.max : Infinity,
           color: c.color,
           name: "f",
           label: "f(x) = " + familyFormula(c),
@@ -278,6 +317,7 @@ export function mountFunctions(ctx) {
         radians: c.type === "trigonometrica",
         grid: true,
         guides,
+        points: pinned,
       };
       let summary = "f(x) = " + familyFormula(c);
       const T = period(c);
@@ -287,7 +327,8 @@ export function mountFunctions(ctx) {
           : " · Sem período fundamental positivo";
       if (c.type === "trigonometrica" && c.trig !== "tan")
         summary += ` · Amplitude = |b| = ${decimal(Math.abs(c.b))}`;
-      $("#graph-summary").textContent = summary;
+      $("#graph-summary").innerHTML =
+        c.type === "trigonometrica" ? trigSummaryMathML(c) : xml(summary);
       $("#function-details").innerHTML =
         `<p>Domínio: ${xml(naturalDomain(c))}${c.domain ? ` ∩ [${decimal(c.min)}; ${decimal(c.max)}]` : ""}.</p>${algebraDetails(c)}${c.type === "logistica" ? "<p>Crescimento logístico: para b ≠ 0, os patamares da curva completa são y = d e y = a + d.</p>" : ""}${c.type === "trigonometrica" ? "<p>As linhas tracejadas mostram os extremos no domínio escolhido (seno e cosseno) ou as assíntotas (tangente). Os ângulos estão em radianos.</p>" : ""}<div class="table-scroll"><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${decimal(familyValue(c, x))}</td>`).join("")}</tr></tbody></table></div>`;
       if ($("#explore-logistic"))
@@ -482,6 +523,14 @@ export function mountFunctions(ctx) {
         f[k] = e.target.value;
         draw();
       };
+    $("#tick-mode").onchange = (e) => {
+      f.tickMode = e.target.value;
+      draw();
+    };
+    $("#show-origin").onchange = (e) => {
+      f.showOrigin = e.target.checked;
+      draw();
+    };
     for (const k of ["radians", "grid"])
       $("#" + k).onchange = (e) => {
         f[k] = e.target.checked;
@@ -509,18 +558,13 @@ export function mountFunctions(ctx) {
       $("#size-error").textContent = "";
       draw();
     };
-    const bindPoints = () =>
-      document.querySelectorAll("[data-remove-point]").forEach(
-        (el) =>
-          (el.onclick = () => {
-            f.points.splice(+el.dataset.removePoint, 1);
-            $("#point-list").innerHTML = pointList();
-            $("#add-point").disabled = false;
-            bindPoints();
-            draw();
-          }),
-      );
-    bindPoints();
+    for (const id of ["width-cm", "height-cm"])
+      $("#" + id).onkeydown = (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          $("#apply-size").click();
+        }
+      };
     $("#add-point").onclick = () => {
       try {
         if (f.points.length >= 12) return;
@@ -531,9 +575,7 @@ export function mountFunctions(ctx) {
           project: $("#point-project").checked,
         });
         $("#point-error").textContent = "";
-        $("#point-list").innerHTML = pointList();
-        $("#add-point").disabled = f.points.length >= 12;
-        bindPoints();
+        refreshPoints();
         draw();
       } catch (e) {
         $("#point-error").textContent = e.message;
@@ -676,6 +718,50 @@ export function mountFunctions(ctx) {
         toast(e.message);
       }
     };
+  refreshPoints();
+  $("#find-special").onclick = () => {
+    const found = findSpecialPoints(
+      options.curves,
+      options,
+      $("#special-kind").value,
+    );
+    $("#special-results").innerHTML = found.length
+      ? found
+          .slice(0, 30)
+          .map(
+            (p, i) =>
+              `<button class="special-result" data-pin-special="${i}">＋ Fixar ${xml(p.kind)} ${xml(p.description)} · (${decimal(p.x)}; ${decimal(p.y)})</button>`,
+          )
+          .join("")
+      : "<p class=small>Nenhum ponto desse tipo encontrado na janela atual.</p>";
+    document.querySelectorAll("[data-pin-special]").forEach(
+      (el) =>
+        (el.onclick = () => {
+          if (pinned.length >= 12) {
+            toast("Limite de 12 pontos fixados. Remova um para continuar.");
+            return;
+          }
+          const p = found[+el.dataset.pinSpecial];
+          if (
+            pinned.some(
+              (q) => Math.abs(q.x - p.x) < 1e-7 && Math.abs(q.y - p.y) < 1e-7,
+            )
+          ) {
+            el.disabled = true;
+            el.textContent = "Ponto já fixado";
+            return;
+          }
+          const used = new Set(pinned.map((q) => q.label));
+          const label =
+            "ABCDEFGHIJKL".split("").find((l) => !used.has(l)) || "P";
+          pinned.push({ x: p.x, y: p.y, label, project: true });
+          el.disabled = true;
+          el.textContent = `${label} fixado · (${decimal(p.x)}; ${decimal(p.y)})`;
+          refreshPoints();
+          draw();
+        }),
+    );
+  };
   common();
   return () => {
     stopAll();

@@ -43,6 +43,13 @@ export function findIntersections(curves, view) {
         else if (points.length < 200)
           points.push({ x, y, names, color: curves[a].color });
       };
+      for (const x of [
+        curves[a].domainMin,
+        curves[a].domainMax,
+        curves[b].domainMin,
+        curves[b].domainMax,
+      ])
+        if (Number.isFinite(x) && x >= view.xmin && x <= view.xmax) add(x);
       for (let i = 0; i < n; i++) {
         const p = samples[i],
           q = samples[i + 1];
@@ -94,4 +101,68 @@ export function findIntersections(curves, view) {
       }
     }
   return points.sort((a, b) => a.x - b.x);
+}
+
+export function findSpecialPoints(curves, view, kind = "intersections") {
+  if (kind === "intersections")
+    return findIntersections(curves, view).map((p) => ({
+      ...p,
+      kind: "Interseção",
+      description: p.names.join(" ∩ "),
+    }));
+  if (kind === "roots")
+    return curves.flatMap((c) =>
+      findIntersections([c, { fn: () => 0, name: "eixo x" }], view).map(
+        (p) => ({ ...p, kind: "Zero", description: c.name }),
+      ),
+    );
+  const result = [],
+    n = 600,
+    dx = (view.xmax - view.xmin) / n;
+  for (const c of curves) {
+    const values = Array.from({ length: n + 1 }, (_, i) =>
+      c.fn(view.xmin + i * dx),
+    );
+    for (let i = 1; i < n; i++) {
+      const a = values[i - 1],
+        b = values[i],
+        d = values[i + 1];
+      if (![a, b, d].every(Number.isFinite)) continue;
+      const sign = b < a && b < d ? 1 : b > a && b > d ? -1 : 0;
+      if (!sign) continue;
+      let lo = view.xmin + (i - 1) * dx,
+        hi = lo + 2 * dx;
+      for (let j = 0; j < 60; j++) {
+        const x1 = lo + (hi - lo) / 3,
+          x2 = hi - (hi - lo) / 3;
+        if (sign * c.fn(x1) < sign * c.fn(x2)) hi = x2;
+        else lo = x1;
+      }
+      const x = (lo + hi) / 2,
+        y = c.fn(x),
+        eps = dx * 0.01,
+        yl = c.fn(x - eps),
+        yr = c.fn(x + eps);
+      if (
+        ![y, yl, yr].every(Number.isFinite) ||
+        y < view.ymin ||
+        y > view.ymax ||
+        !(sign * (yl - y) > 0 && sign * (yr - y) > 0)
+      )
+        continue;
+      if (
+        !result.some(
+          (p) => p.description === c.name && Math.abs(p.x - x) < dx * 0.01,
+        )
+      )
+        result.push({
+          x,
+          y,
+          kind: sign === 1 ? "Mínimo" : "Máximo",
+          description: c.name,
+        });
+      if (result.length >= 100) return result;
+    }
+  }
+  return result.sort((a, b) => a.x - b.x);
 }

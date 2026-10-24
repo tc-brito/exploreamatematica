@@ -197,7 +197,11 @@ test("SVG transparente, dimensões, rótulos seguros e curvas separadas nas ass�
   assert.match(g.svg, /width="1000" height="700"/);
   assert.match(g.svg, /Tempo &lt;s&gt;/);
   assert.match(g.svg, /A &lt; B/);
-  assert.ok(!/fill="(?:white|#fff(?:fff)?)"/.test(g.svg));
+  assert.ok(
+    !/fill="(?:white|#fff(?:fff)?)"/.test(
+      g.svg.replace(/<defs>[\s\S]*?<\/defs>/, ""),
+    ),
+  );
   assert.ok(!g.svg.includes("NaN"));
   const path = curvePath(o.curves[0].fn, o, o.curves[0].breaks);
   assert.ok((path.match(/M/g) || []).length >= 3);
