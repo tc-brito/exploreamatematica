@@ -1,33 +1,33 @@
 (() => {
   // assets/math.js
-  var choose = (n, k) => {
-    if (k < 0 || k > n) return 0;
+  var choose = (n2, k) => {
+    if (k < 0 || k > n2) return 0;
     let r = 1;
-    for (let i = 1; i <= Math.min(k, n - k); i++) r = r * (n - i + 1) / i;
+    for (let i = 1; i <= Math.min(k, n2 - k); i++) r = r * (n2 - i + 1) / i;
     return Math.round(r);
   };
-  var binomial = (n, p) => Array.from(
-    { length: n + 1 },
-    (_, k) => choose(n, k) * p ** k * (1 - p) ** (n - k)
+  var binomial = (n2, p) => Array.from(
+    { length: n2 + 1 },
+    (_, k) => choose(n2, k) * p ** k * (1 - p) ** (n2 - k)
   );
   function statistics(values, sample = false) {
     if (!values.length || values.some((x) => !Number.isFinite(x)))
       throw Error("Informe ao menos um n\xFAmero finito.");
-    const sorted = [...values].sort((a, b) => a - b), n = values.length, mean = values.reduce((a, b) => a + b, 0) / n, median = n % 2 ? sorted[(n - 1) / 2] : (sorted[n / 2 - 1] + sorted[n / 2]) / 2;
+    const sorted = [...values].sort((a, b) => a - b), n2 = values.length, mean = values.reduce((a, b) => a + b, 0) / n2, median = n2 % 2 ? sorted[(n2 - 1) / 2] : (sorted[n2 / 2 - 1] + sorted[n2 / 2]) / 2;
     const frequencies = /* @__PURE__ */ new Map();
-    values.forEach((v) => frequencies.set(v, (frequencies.get(v) || 0) + 1));
+    values.forEach((v2) => frequencies.set(v2, (frequencies.get(v2) || 0) + 1));
     const max = Math.max(...frequencies.values());
-    const variance = sample && n < 2 ? null : values.reduce((s, x) => s + (x - mean) ** 2, 0) / (sample ? n - 1 : n);
+    const variance = sample && n2 < 2 ? null : values.reduce((s, x) => s + (x - mean) ** 2, 0) / (sample ? n2 - 1 : n2);
     return {
-      n,
+      n: n2,
       mean,
       median,
-      modes: max === 1 ? [] : [...frequencies].filter(([, v]) => v === max).map(([k]) => k).sort((a, b) => a - b),
+      modes: max === 1 ? [] : [...frequencies].filter(([, v2]) => v2 === max).map(([k]) => k).sort((a, b) => a - b),
       variance,
       std: variance === null ? null : Math.sqrt(variance),
-      range: sorted[n - 1] - sorted[0],
+      range: sorted[n2 - 1] - sorted[0],
       min: sorted[0],
-      max: sorted[n - 1],
+      max: sorted[n2 - 1],
       sorted,
       frequencies
     };
@@ -39,7 +39,7 @@
         "Use de 1 a 500 valores, separados por espa\xE7o ou ponto e v\xEDrgula."
       );
     const values = tokens.map((t) => Number(t.replace(",", ".")));
-    if (values.some((v) => !Number.isFinite(v) || Math.abs(v) > 1e9))
+    if (values.some((v2) => !Number.isFinite(v2) || Math.abs(v2) > 1e9))
       throw Error(
         "Use apenas n\xFAmeros entre \u22121 bilh\xE3o e 1 bilh\xE3o. Exemplo: 4; 5,5; 7."
       );
@@ -214,9 +214,9 @@
     "#c4d5ad",
     "#e1e9cf"
   ];
-  var add = (a, b) => a.map((v, i) => v + b[i]);
-  var norm = (v) => Math.hypot(...v);
-  var scale = (v, k) => v.map((x) => x * k);
+  var add = (a, b) => a.map((v2, i) => v2 + b[i]);
+  var norm = (v2) => Math.hypot(...v2);
+  var scale = (v2, k) => v2.map((x) => x * k);
   var CAMERA_VIEWS = {
     perspective: { label: "Perspectiva 3D", rx: 0.38, ry: 0.56 },
     front: { label: "Frontal", rx: 0, ry: 0 },
@@ -241,6 +241,8 @@
       a: 4,
       h: 6,
       b: 3,
+      frustum: false,
+      top: 2,
       faces: true,
       edges: true,
       vertices: false,
@@ -273,15 +275,15 @@
       [a / 2, 0, -b / 2],
       [a / 2, 0, b / 2],
       [-a / 2, 0, b / 2]
-    ], north = (u, v) => [u, v * C, -b / 2 - v * S], south = (u, v) => [u, v * C, b / 2 + v * S], west = (u, v) => [-a / 2 - v * S, v * C, u], east = (u, v) => [a / 2 + v * S, v * C, u], panel = (fn, w) => [
+    ], north = (u, v2) => [u, v2 * C, -b / 2 - v2 * S], south = (u, v2) => [u, v2 * C, b / 2 + v2 * S], west = (u, v2) => [-a / 2 - v2 * S, v2 * C, u], east = (u, v2) => [a / 2 + v2 * S, v2 * C, u], panel = (fn, w) => [
       fn(-w / 2, 0),
       fn(w / 2, 0),
       fn(w / 2, h),
       fn(-w / 2, h)
-    ], top = (u, v) => [
+    ], top = (u, v2) => [
       u,
-      h * C + v * Math.sin(2 * q),
-      -b / 2 - h * S + v * Math.cos(2 * q)
+      h * C + v2 * Math.sin(2 * q),
+      -b / 2 - h * S + v2 * Math.cos(2 * q)
     ];
     return [
       face(base, 0),
@@ -293,7 +295,7 @@
     ];
   }
   function pyramidNet(a, h, t) {
-    const q = (Math.PI - Math.atan2(h, a / 2)) * t, C = Math.cos(q), S = Math.sin(q), v = h * C + a / 2 * S, w = h * S - a / 2 * C;
+    const q = (Math.PI - Math.atan2(h, a / 2)) * t, C = Math.cos(q), S = Math.sin(q), v2 = h * C + a / 2 * S, w = h * S - a / 2 * C;
     return [
       face(
         [
@@ -308,7 +310,7 @@
         [
           [-a / 2, 0, -a / 2],
           [a / 2, 0, -a / 2],
-          [0, v, -a / 2 - w]
+          [0, v2, -a / 2 - w]
         ],
         1
       ),
@@ -316,7 +318,7 @@
         [
           [a / 2, 0, -a / 2],
           [a / 2, 0, a / 2],
-          [a / 2 + w, v, 0]
+          [a / 2 + w, v2, 0]
         ],
         2
       ),
@@ -324,7 +326,7 @@
         [
           [a / 2, 0, a / 2],
           [-a / 2, 0, a / 2],
-          [0, v, a / 2 + w]
+          [0, v2, a / 2 + w]
         ],
         3
       ),
@@ -332,7 +334,7 @@
         [
           [-a / 2, 0, a / 2],
           [-a / 2, 0, -a / 2],
-          [-a / 2 - w, v, 0]
+          [-a / 2 - w, v2, 0]
         ],
         4
       )
@@ -341,13 +343,13 @@
   function cylinderNet(r, h, t, N = 80) {
     const k = (1 - t) / r, bend = (s) => Math.abs(k) < 1e-8 ? [s, 0] : [Math.sin(k * s) / k, (Math.cos(k * s) - 1) / k], result = [], q = t * Math.PI / 2;
     for (let i = 0; i < N; i++) {
-      let p = bend(-Math.PI * r + 2 * Math.PI * r * i / N), n = bend(-Math.PI * r + 2 * Math.PI * r * (i + 1) / N);
+      let p = bend(-Math.PI * r + 2 * Math.PI * r * i / N), n2 = bend(-Math.PI * r + 2 * Math.PI * r * (i + 1) / N);
       result.push(
         face(
           [
             [p[0], 0, p[1]],
-            [n[0], 0, n[1]],
-            [n[0], h, n[1]],
+            [n2[0], 0, n2[1]],
+            [n2[0], h, n2[1]],
             [p[0], h, p[1]]
           ],
           2,
@@ -433,7 +435,7 @@
       );
     return out;
   }
-  function revolutionProfile(type, r, h) {
+  function revolutionProfile(type, r, h, top = 0) {
     if (type === "cilindro")
       return [
         [0, -h / 2, 0],
@@ -445,6 +447,7 @@
       return [
         [0, -h / 2, 0],
         [r, -h / 2, 0],
+        ...top > 0 ? [[top, h / 2, 0]] : [],
         [0, h / 2, 0]
       ];
     return Array.from({ length: 49 }, (_, j) => {
@@ -453,8 +456,8 @@
     });
   }
   var revolvePoint = ([x, y], phi, axis = "y") => axis === "y" ? [x * Math.cos(phi), y, x * Math.sin(phi)] : [y, x * Math.cos(phi), x * Math.sin(phi)];
-  function revolutionMesh(type, r, h, degrees, axis = "y") {
-    const angle = degrees * Math.PI / 180, steps = Math.max(1, Math.ceil(degrees / 5)), profile = revolutionProfile(type, r, h), out = [];
+  function revolutionMesh(type, r, h, degrees, axis = "y", top = 0) {
+    const angle = degrees * Math.PI / 180, steps = Math.max(1, Math.ceil(degrees / 5)), profile = revolutionProfile(type, r, h, top), out = [];
     if (degrees <= 0) return [];
     for (let j = 0; j < profile.length; j++) {
       let next = (j + 1) % profile.length;
@@ -495,15 +498,24 @@
   }
   function solidScene(s) {
     let faces, poly = ["cubo", "prisma", "piramide"].includes(s.type), a = s.a, h = s.type === "cubo" ? a : s.h, b = s.type === "cubo" ? a : s.b;
+    const truncated = isFrustum(s);
     if (s.view === "net") {
       const t = s.opening / 100;
-      faces = s.type === "piramide" ? pyramidNet(a, h, t) : s.type === "cilindro" ? cylinderNet(a, h, t) : s.type === "cone" ? coneNet(a, h, t) : cuboidNet(a, h, b, t);
+      faces = truncated ? frustumNet(s.type, a, s.top, h, t) : s.type === "piramide" ? pyramidNet(a, h, t) : s.type === "cilindro" ? cylinderNet(a, h, t) : s.type === "cone" ? coneNet(a, h, t) : cuboidNet(a, h, b, t);
     } else if (s.view === "revolution")
-      faces = revolutionMesh(s.type, a, h, s.revolution, s.axis);
+      faces = revolutionMesh(
+        s.type,
+        a,
+        h,
+        s.revolution,
+        s.axis,
+        truncated ? s.top : 0
+      );
     else if (s.type === "esfera" && s.part === "cap")
       faces = sphericalCap(a, s.capHeight);
     else if (s.type === "esfera" && s.part === "wedge")
       faces = revolutionMesh("esfera", a, h, s.wedge);
+    else if (truncated) faces = frustumMesh(s.type, a, s.top, h);
     else {
       let m = mesh(s.type, a, h, b);
       faces = m.faces.map(
@@ -517,9 +529,9 @@
     if (s.view === "exploded") {
       faces = faces.map((f, i) => {
         let c = f.points.reduce(
-          (v, p) => add(v, scale(p, 1 / f.points.length)),
+          (v2, p) => add(v2, scale(p, 1 / f.points.length)),
           [0, 0, 0]
-        ), offset = poly ? scale(c, 1.8 / (norm(c) || 1)) : i === 0 ? [0, -1.8, 0] : s.type === "cilindro" && i === 1 ? [0, 1.8, 0] : [0, 0.3, 0];
+        ), offset = poly ? scale(c, 1.8 / (norm(c) || 1)) : i === 0 ? [0, -1.8, 0] : (s.type === "cilindro" || truncated) && i === 1 ? [0, 1.8, 0] : [0, 0.3, 0];
         return { ...f, points: f.points.map((p) => add(p, offset)) };
       });
     }
@@ -547,9 +559,10 @@
       s.view = "solid";
     if (!["whole", "cap", "wedge"].includes(s.part)) s.part = "whole";
     if (!["x", "y"].includes(s.axis)) s.axis = "y";
-    clamp("a", 0.5, 10);
-    clamp("h", 0.5, 12);
-    clamp("b", 0.5, 10);
+    clamp("a", 0.5, 20);
+    clamp("h", 0.5, 20);
+    clamp("b", 0.5, 20);
+    clamp("top", 0.1, s.a);
     clamp("opening", 0, 100);
     clamp("revolution", 0, 360);
     clamp("capHeight", 0.05, 2 * s.a);
@@ -558,6 +571,115 @@
     clamp("rx", -Math.PI, Math.PI);
     clamp("ry", -100, 100);
     return s;
+  }
+  var isFrustum = (s) => s.frustum && ["cone", "piramide"].includes(s.type);
+  function frustumMetrics(type, a, b, h) {
+    const cone = type === "cone", g = Math.hypot(h, (a - b) / (cone ? 1 : 2));
+    return {
+      area: cone ? Math.PI * (a * a + b * b + (a + b) * g) : a * a + b * b + 2 * (a + b) * g,
+      volume: (cone ? Math.PI : 1) * h * (a * a + a * b + b * b) / 3,
+      g,
+      vertices: cone ? null : 8,
+      edges: cone ? null : 12,
+      faces: cone ? 3 : 6
+    };
+  }
+  function frustumMesh(type, a, b, h, N = 96) {
+    const ring = (r, y) => type === "piramide" ? [
+      [-r / 2, y, -r / 2],
+      [r / 2, y, -r / 2],
+      [r / 2, y, r / 2],
+      [-r / 2, y, r / 2]
+    ] : Array.from({ length: N }, (_, i) => [
+      r * Math.cos(2 * Math.PI * i / N),
+      y,
+      r * Math.sin(2 * Math.PI * i / N)
+    ]);
+    const lower = ring(a, -h / 2), upper = ring(b, h / 2), n2 = lower.length;
+    return [
+      face(lower, 0),
+      face(upper, 1),
+      ...lower.map(
+        (p, i) => face([p, lower[(i + 1) % n2], upper[(i + 1) % n2], upper[i]], i + 2, {
+          smooth: type === "cone"
+        })
+      )
+    ];
+  }
+  function frustumNet(type, a, b, h, t, N = 96) {
+    if (type === "piramide") {
+      const g2 = Math.hypot(h, (a - b) / 2), start = Math.atan2(h, (a - b) / 2), theta = start + (Math.PI - start) * t;
+      const north = (u, v2) => [
+        u,
+        v2 * Math.sin(theta),
+        -a / 2 + v2 * Math.cos(theta)
+      ], south = (u, v2) => [u, v2 * Math.sin(theta), a / 2 - v2 * Math.cos(theta)], west = (u, v2) => [-a / 2 + v2 * Math.cos(theta), v2 * Math.sin(theta), u], east = (u, v2) => [a / 2 - v2 * Math.cos(theta), v2 * Math.sin(theta), u];
+      const panel = (fn) => [
+        fn(-a / 2, 0),
+        fn(a / 2, 0),
+        fn(b / 2, g2),
+        fn(-b / 2, g2)
+      ];
+      const top = (u, v2) => [
+        u,
+        g2 * Math.sin(theta) + v2 * Math.sin(Math.PI * t),
+        -a / 2 + g2 * Math.cos(theta) + v2 * Math.cos(Math.PI * t)
+      ];
+      return [
+        face(
+          [
+            [-a / 2, 0, -a / 2],
+            [a / 2, 0, -a / 2],
+            [a / 2, 0, a / 2],
+            [-a / 2, 0, a / 2]
+          ],
+          0
+        ),
+        ...[north, east, south, west].map((fn, i) => face(panel(fn), i + 1)),
+        face([top(-b / 2, 0), top(b / 2, 0), top(b / 2, b), top(-b / 2, b)], 5)
+      ];
+    }
+    if (Math.abs(a - b) < 1e-6) return cylinderNet(a, h, t, N);
+    const g = Math.hypot(h, a - b), L = g * a / (a - b), l = g * b / (a - b), alpha = Math.asin((a - b) / g), beta = alpha + (Math.PI / 2 - alpha) * t, phi = 2 * Math.PI * Math.sin(alpha) / Math.sin(beta);
+    const point = (v2, i) => [
+      v2 * Math.sin(beta) * Math.sin(-phi / 2 + phi * i / N),
+      (L - v2) * Math.cos(beta),
+      v2 * Math.sin(beta) * Math.cos(-phi / 2 + phi * i / N)
+    ];
+    const out = Array.from(
+      { length: N },
+      (_, i) => face([point(L, i), point(L, i + 1), point(l, i + 1), point(l, i)], 2, {
+        smooth: true
+      })
+    );
+    const q = Math.PI * t;
+    out.push(
+      face(
+        Array.from({ length: N }, (_, i) => {
+          const angle = 2 * Math.PI * i / N, z = a * (Math.cos(angle) - 1);
+          return [
+            a * Math.sin(angle),
+            -z * Math.sin(q),
+            L * Math.sin(beta) + z * Math.cos(q)
+          ];
+        }),
+        0
+      )
+    );
+    out.push(
+      face(
+        Array.from({ length: N }, (_, i) => {
+          const angle = 2 * Math.PI * i / N;
+          return [
+            b * Math.sin(angle),
+            (L - l) * Math.cos(beta),
+            l * Math.sin(beta) + b * (Math.cos(angle) - 1)
+          ];
+        }),
+        1
+      )
+    );
+    return out;
   }
 
   // assets/function-math.js
@@ -670,8 +792,8 @@
         ymax: 8,
         width: 1e3,
         height: 700,
-        widthCm: 14,
-        heightCm: 9,
+        widthCm: 15,
+        heightCm: 10,
         axesBold: false,
         showOrigin: false,
         tickMode: "regular",
@@ -722,21 +844,21 @@
         return NaN;
     }
   }
-  var num = (n) => Number(n.toFixed(4)).toLocaleString("pt-BR", {
+  var num = (n2) => Number(n2.toFixed(4)).toLocaleString("pt-BR", {
     maximumFractionDigits: 4,
     useGrouping: false
   });
   function familyMathML(c) {
-    const v = (s) => `<mi>${s}</mi>`, op = (s) => `<mo>${s}</mo>`;
-    const x = v("x"), a = v("a"), b = v("b"), cc = v("c"), d = v("d"), plus = op("+");
+    const v2 = (s) => `<mi>${s}</mi>`, op2 = (s) => `<mo>${s}</mo>`;
+    const x = v2("x"), a = v2("a"), b = v2("b"), cc = v2("c"), d = v2("d"), plus = op2("+");
     const body = {
       afim: a + x + plus + b,
       quadratica: a + `<msup>${x}<mn>2</mn></msup>` + plus + b + x + plus + cc,
-      exponencial: a + op("\xB7") + `<msup>${b}${x}</msup>` + plus + cc,
-      logistica: `<mfrac>${a}<mrow><mn>1</mn>${plus}<msup><mi mathvariant="normal">e</mi><mrow>${op("\u2212")}${b}${op("(")}${x}${op("\u2212")}${cc}${op(")")}</mrow></msup></mrow></mfrac>${plus}${d}`,
-      logaritmica: a + op("\xB7") + `<msub><mi mathvariant="normal">log</mi>${b}</msub>` + op("(") + x + op("\u2212") + cc + op(")") + plus + d,
-      modular: a + op("|") + x + op("\u2212") + b + op("|") + plus + cc,
-      trigonometrica: a + plus + b + op("\xB7") + `<mi mathvariant="normal">${c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen"}</mi>` + op("(") + cc + x + plus + d + op(")")
+      exponencial: a + op2("\xB7") + `<msup>${b}${x}</msup>` + plus + cc,
+      logistica: `<mfrac>${a}<mrow><mn>1</mn>${plus}<msup><mi mathvariant="normal">e</mi><mrow>${op2("\u2212")}${b}${op2("(")}${x}${op2("\u2212")}${cc}${op2(")")}</mrow></msup></mrow></mfrac>${plus}${d}`,
+      logaritmica: a + op2("\xB7") + `<msub><mi mathvariant="normal">log</mi>${b}</msub>` + op2("(") + x + op2("\u2212") + cc + op2(")") + plus + d,
+      modular: a + op2("|") + x + op2("\u2212") + b + op2("|") + plus + cc,
+      trigonometrica: a + plus + b + op2("\xB7") + `<mi mathvariant="normal">${c.trig === "cos" ? "cos" : c.trig === "tan" ? "tan" : "sen"}</mi>` + op2("(") + cc + x + plus + d + op2(")")
     }[c.type];
     return `<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow>${body}</mrow></math>`;
   }
@@ -758,24 +880,24 @@
         modular: "a \xB7 |x \u2212 b| + c",
         trigonometrica: "a + b \xB7 " + trig + "(cx + d)"
       }[c.type];
-    const sum = (terms) => {
+    const sum2 = (terms) => {
       let out = "";
-      for (const [v, label] of terms) {
-        if (v === 0) continue;
-        const mag = Math.abs(v), part = (label ? mag === 1 ? "" : num(mag) + (label === "x" || label === "x\xB2" ? "" : " \xB7 ") : num(mag)) + label;
-        out += (out ? v < 0 ? " \u2212 " : " + " : v < 0 ? "\u2212" : "") + part;
+      for (const [v2, label] of terms) {
+        if (v2 === 0) continue;
+        const mag = Math.abs(v2), part = (label ? mag === 1 ? "" : num(mag) + (label === "x" || label === "x\xB2" ? "" : " \xB7 ") : num(mag)) + label;
+        out += (out ? v2 < 0 ? " \u2212 " : " + " : v2 < 0 ? "\u2212" : "") + part;
       }
       return out || "0";
     };
-    const shift = (v) => v === 0 ? "" : v < 0 ? " \u2212 " + num(-v) : " + " + num(v);
+    const shift = (v2) => v2 === 0 ? "" : v2 < 0 ? " \u2212 " + num(-v2) : " + " + num(v2);
     switch (c.type) {
       case "afim":
-        return sum([
+        return sum2([
           [c.a, "x"],
           [c.b, ""]
         ]);
       case "quadratica":
-        return sum([
+        return sum2([
           [c.a, "x\xB2"],
           [c.b, "x"],
           [c.c, ""]
@@ -787,16 +909,16 @@
       case "logaritmica":
         return num(c.a) + " \xB7 log[" + num(c.b) + "](x" + shift(-c.c) + ")" + shift(c.d);
       case "modular":
-        return sum([
+        return sum2([
           [c.a, "|x" + shift(-c.b) + "|"],
           [c.c, ""]
         ]);
       case "trigonometrica":
-        return sum([
+        return sum2([
           [c.a, ""],
           [
             c.b,
-            trig + "(" + sum([
+            trig + "(" + sum2([
               [c.c, "x"],
               [c.d, ""]
             ]) + ")"
@@ -820,8 +942,8 @@
   function familyBreaks(c, lo, hi) {
     if (c.type === "logaritmica") return [c.c];
     if (c.type !== "trigonometrica" || c.trig !== "tan" || !c.c) return [];
-    const v = [c.c * lo + c.d, c.c * hi + c.d].sort((a, b) => a - b), out = [];
-    for (let k = Math.ceil((v[0] - Math.PI / 2) / Math.PI); k <= Math.floor((v[1] - Math.PI / 2) / Math.PI) && out.length < 300; k++)
+    const v2 = [c.c * lo + c.d, c.c * hi + c.d].sort((a, b) => a - b), out = [];
+    for (let k = Math.ceil((v2[0] - Math.PI / 2) / Math.PI); k <= Math.floor((v2[1] - Math.PI / 2) / Math.PI) && out.length < 300; k++)
       out.push((Math.PI / 2 + k * Math.PI - c.d) / c.c);
     return out.sort((a, b) => a - b);
   }
@@ -831,8 +953,8 @@
     for (let q of [1, 2, 3, 4, 6, 8, 12]) {
       let p = Math.round(f * q);
       if (Math.abs(f - p / q) < 1e-7) {
-        let sign = p < 0 ? "\u2212" : "", n = Math.abs(p);
-        return sign + (n === 1 ? "" : n) + "\u03C0" + (q === 1 ? "" : "/" + q);
+        let sign = p < 0 ? "\u2212" : "", n2 = Math.abs(p);
+        return sign + (n2 === 1 ? "" : n2) + "\u03C0" + (q === 1 ? "" : "/" + q);
       }
     }
     return num(x);
@@ -920,10 +1042,10 @@
         if (take()?.type !== ")") throw Error("Falta fechar um par\xEAntese.");
       } else throw Error("Confira os operadores e par\xEAnteses.");
       while (true) {
-        let op = peek(), power = { "+": 10, "-": 10, "*": 20, "/": 20, "^": 30 }[op];
+        let op2 = peek(), power = { "+": 10, "-": 10, "*": 20, "/": 20, "^": 30 }[op2];
         if (power === void 0 || power < min) break;
         take();
-        node = { op, a: node, b: expr(op === "^" ? power : power + 1) };
+        node = { op: op2, a: node, b: expr(op2 === "^" ? power : power + 1) };
       }
       depth--;
       return node;
@@ -931,12 +1053,12 @@
     const ast = expr();
     if (i !== expanded.length)
       throw Error("H\xE1 um par\xEAntese ou operador fora de posi\xE7\xE3o.");
-    function run(n, x) {
-      switch (n.op) {
+    function run(n2, x) {
+      switch (n2.op) {
         case "num":
-          return n.v;
+          return n2.v;
         case "parameter":
-          return Number(parameters[n.v]);
+          return Number(parameters[n2.v]);
         case "x":
           return x;
         case "pi":
@@ -944,23 +1066,23 @@
         case "e":
           return Math.E;
         case "neg":
-          return -run(n.a, x);
+          return -run(n2.a, x);
         case "pos":
-          return run(n.a, x);
+          return run(n2.a, x);
         case "call":
-          return funcs[n.fn](run(n.a, x));
+          return funcs[n2.fn](run(n2.a, x));
         case "+":
-          return run(n.a, x) + run(n.b, x);
+          return run(n2.a, x) + run(n2.b, x);
         case "-":
-          return run(n.a, x) - run(n.b, x);
+          return run(n2.a, x) - run(n2.b, x);
         case "*":
-          return run(n.a, x) * run(n.b, x);
+          return run(n2.a, x) * run(n2.b, x);
         case "/": {
-          let b = run(n.b, x);
-          return b === 0 ? NaN : run(n.a, x) / b;
+          let b = run(n2.b, x);
+          return b === 0 ? NaN : run(n2.a, x) / b;
         }
         case "^":
-          return run(n.a, x) ** run(n.b, x);
+          return run(n2.a, x) ** run(n2.b, x);
       }
     }
     return (x) => {
@@ -971,18 +1093,18 @@
   function finiteInput(text) {
     if (/x/i.test(String(text).replace(/exp/gi, "")))
       throw Error("Informe um valor num\xE9rico, sem a vari\xE1vel x.");
-    const n = compileExpression(String(text))(0);
-    if (!Number.isFinite(n))
+    const n2 = compileExpression(String(text))(0);
+    if (!Number.isFinite(n2))
       throw Error("Informe um n\xFAmero finito, como 2,5 ou pi/2.");
-    return n;
+    return n2;
   }
   function sanitizeFunctions(raw) {
     let out = defaultFunctions();
     if (!raw || typeof raw !== "object") return out;
-    const finite = (n, f2, min, max) => typeof n === "number" && Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : f2;
+    const finite = (n2, f2, min, max) => typeof n2 === "number" && Number.isFinite(n2) ? Math.max(min, Math.min(max, n2)) : f2;
     if (Array.isArray(raw.curves) && raw.curves.length) {
       out.curves = raw.curves.slice(0, 4).map((c, i) => {
-        let type = FAMILIES.some(([v]) => v === c.type) ? c.type : "afim", d = makeCurve(type, i);
+        let type = FAMILIES.some(([v2]) => v2 === c.type) ? c.type : "afim", d = makeCurve(type, i);
         for (const k of ["a", "b", "c", "d"])
           d[k] = finite(c[k], d[k], -1e3, 1e3);
         d.trig = ["sin", "cos", "tan"].includes(c.trig) ? c.trig : "sin";
@@ -990,7 +1112,7 @@
         d.domain = c.domain === true;
         d.min = finite(c.min, -10, -1e4, 1e4);
         d.max = finite(c.max, 10, -1e4, 1e4);
-        d.color = PALETTE.some(([v]) => v === c.color) ? c.color : d.color;
+        d.color = PALETTE.some(([v2]) => v2 === c.color) ? c.color : d.color;
         return d;
       });
     } else if (raw.type) {
@@ -998,13 +1120,17 @@
       ["a", "b", "c"].forEach((k) => c[k] = finite(raw[k], c[k], -1e3, 1e3));
       out.curves = [c];
     }
+    for (const k of ["xlabelDx", "xlabelDy", "ylabelDx", "ylabelDy"])
+      out[k] = finite(raw[k], 0, -200, 200);
     out.active = Math.round(finite(raw.active, 0, 0, out.curves.length - 1));
     if (Array.isArray(raw.points))
       out.points = raw.points.slice(0, 12).filter((p) => p && Number.isFinite(p.x) && Number.isFinite(p.y)).map((p) => ({
         x: p.x,
         y: p.y,
         label: String(p.label || "").slice(0, 24),
-        project: p.project !== false
+        project: p.project !== false,
+        labelDx: finite(p.labelDx, 0, -200, 200),
+        labelDy: finite(p.labelDy, 0, -200, 200)
       }));
     out.mode = raw.mode === "free" ? "free" : "families";
     for (const k of ["xmin", "xmax", "ymin", "ymax"])
@@ -1022,7 +1148,7 @@
       return {
         strokeWidth: finite(c.strokeWidth, 1, 0.25, 6),
         expression: String(c.expression ?? "").slice(0, 240),
-        color: PALETTE.some(([v]) => v === c.color) ? c.color : PALETTE[i % 8][0],
+        color: PALETTE.some(([v2]) => v2 === c.color) ? c.color : PALETTE[i % 8][0],
         visible: c.visible !== false,
         showEquation: c.showEquation === true,
         min: String(c.min ?? "").slice(0, 40),
@@ -1045,16 +1171,18 @@
             k === "width" ? 2e3 : 1600
           )
         );
-      out.free.widthCm = finite(f.widthCm, 14, 6, 30);
-      out.free.heightCm = finite(f.heightCm, 9, 4, 25);
+      out.free.widthCm = finite(f.widthCm, 15, 6, 30);
+      out.free.heightCm = finite(f.heightCm, 10, 4, 25);
+      for (const k of ["xlabelDx", "xlabelDy", "ylabelDx", "ylabelDy"])
+        out.free[k] = finite(f[k], 0, -200, 200);
       out.free.axesBold = f.axesBold === true;
       out.free.showOrigin = f.showOrigin === true;
       out.free.tickMode = f.tickMode === "points" ? "points" : "regular";
       for (const k of ["xstep", "ystep"]) {
         const rawStep = String(f[k] ?? "").slice(0, 40);
         try {
-          const n = finiteInput(rawStep);
-          out.free[k] = n > 0 ? rawStep : "";
+          const n2 = finiteInput(rawStep);
+          out.free[k] = n2 > 0 ? rawStep : "";
         } catch {
           out.free[k] = "";
         }
@@ -1069,7 +1197,9 @@
           x: finite(p.x, 0, -1e4, 1e4),
           y: finite(p.y, 0, -1e4, 1e4),
           label: String(p.label || "").slice(0, 24),
-          project: p.project !== false
+          project: p.project !== false,
+          labelDx: finite(p.labelDx, 0, -200, 200),
+          labelDy: finite(p.labelDy, 0, -200, 200)
         }));
       if (out.free.xmin >= out.free.xmax) {
         out.free.xmin = -5;
@@ -1098,6 +1228,71 @@
     return { min: Math.min(...values), max: Math.max(...values) };
   }
 
+  // assets/solid-formulas.js
+  var v = (x) => `<mi>${x}</mi>`;
+  var n = (x) => `<mn>${x}</mn>`;
+  var op = (x) => `<mo>${x}</mo>`;
+  var row = (x) => `<mrow>${x}</mrow>`;
+  var pow = (x, p) => `<msup>${v(x)}${n(p)}</msup>`;
+  var frac = (a, b) => `<mfrac>${row(a)}${row(b)}</mfrac>`;
+  var bracket = (x) => op("(") + x + op(")");
+  var sq = (x) => pow(x, 2);
+  var cube = (x) => pow(x, 3);
+  var pi = v("\u03C0");
+  var sum = (...xs) => xs.join(op("+"));
+  function geometryFormula(s) {
+    let A, V, label = v("A");
+    const a = v("a"), b = v("b"), h = v("h"), r = v("r"), g = v("g");
+    switch (s.type) {
+      case "cubo":
+        A = n(6) + sq("a");
+        V = cube("a");
+        break;
+      case "prisma":
+        A = n(2) + bracket(sum(a + b, a + h, b + h));
+        V = a + b + h;
+        break;
+      case "piramide":
+        A = sum(sq("a"), n(2) + a + v("\u2113"));
+        V = frac(sq("a") + h, n(3));
+        break;
+      case "cilindro":
+        A = n(2) + pi + r + bracket(sum(r, h));
+        V = pi + sq("r") + h;
+        break;
+      case "cone":
+        A = pi + r + bracket(sum(r, g));
+        V = frac(pi + sq("r") + h, n(3));
+        break;
+      default:
+        A = n(4) + pi + sq("r");
+        V = frac(n(4) + pi + cube("r"), n(3));
+    }
+    if (isFrustum(s)) {
+      if (s.type === "cone") {
+        A = pi + bracket(sum(sq("R"), sq("r"))) + op("+") + pi + bracket(sum(v("R"), r)) + g;
+        V = frac(pi + h, n(3)) + bracket(sum(sq("R"), v("R") + r, sq("r")));
+      } else {
+        A = sum(sq("a"), sq("b"), n(2) + bracket(sum(a, b)) + v("\u2113"));
+        V = frac(h, n(3)) + bracket(sum(sq("a"), a + b, sq("b")));
+      }
+    }
+    if (s.type === "esfera" && s.view !== "revolution") {
+      if (s.part === "cap") {
+        label = `<msub>${v("A")}<mtext>calota</mtext></msub>`;
+        A = n(2) + pi + r + h;
+        V = pi + sq("h") + bracket(r + op("\u2212") + frac(h, n(3)));
+      } else if (s.part === "wedge") {
+        label = `<msub>${v("A")}<mtext>curva</mtext></msub>`;
+        const f = frac(v("\u03B8"), n(360) + op("\xB0"));
+        A = f + op("\xB7") + A;
+        V = f + op("\xB7") + V;
+      }
+    }
+    const math = (content) => `<math xmlns="http://www.w3.org/1998/Math/MathML" display="block">${row(content)}</math>`;
+    return `<div class="solid-math">${math(label + op("=") + A)}${math(v("V") + op("=") + V)}</div><p>u.a.: unidades de \xE1rea \xB7 u.v.: unidades de volume.</p>`;
+  }
+
   // assets/geometry-lab.js
   function mountGeometry(ctx) {
     const {
@@ -1112,8 +1307,16 @@
       render: render2,
       downloadSVG: downloadSVG2,
       state: state2
-    } = ctx, s = state2.geometry, curved = ["cilindro", "cone", "esfera"].includes(s.type), normal = s.view === "solid";
-    let controls = `<div class="control-title">Seu s\xF3lido <span>\u25C7</span></div>${select2("shape", "Escolha o s\xF3lido", Object.entries(SOLID_NAMES), s.type)}${select2("camera-view", "Vista do s\xF3lido", [...Object.entries(CAMERA_VIEWS).map(([key, v]) => [key, v.label]), ["custom", "Rota\xE7\xE3o livre"]], s.camera)}<div class="control-section"><h2>Dimens\xF5es \xB7 unidades de comprimento</h2>${range2("dim-a", curved ? "Raio (r)" : s.type === "cubo" ? "Aresta (a)" : "Lado da base (a)", s.a, 0.5, 10, 0.1)}${!["cubo", "esfera"].includes(s.type) ? range2("dim-h", "Altura (h)", s.h, 0.5, 12, 0.1) : ""}${s.type === "prisma" ? range2("dim-b", "Largura da base (b)", s.b, 0.5, 10, 0.1) : ""}</div><div class="control-section"><h2>Explore a estrutura</h2><div class="segmented">${[["solid", "S\xF3lido 3D"], ["net", "Planifica\xE7\xE3o"], ["exploded", "Vista explodida"], ...curved ? [["revolution", "Revolu\xE7\xE3o"]] : []].map(([v, l]) => `<button data-view="${v}" aria-pressed="${s.view === v}" ${s.type === "esfera" && ["net", "exploded"].includes(v) ? 'disabled title="A esfera n\xE3o tem planifica\xE7\xE3o plana exata"' : ""} class="${s.view === v ? "selected" : ""}">${l}</button>`).join("")}</div>${s.view === "net" ? `<div class="dynamic-control">${range2("opening", "Abertura da planifica\xE7\xE3o", s.opening, 0, 100, 1, "%")}<div class="range-ends"><span>Fechado</span><span>Aberto</span></div><p class="small">Arraste o controle para abrir e fechar o s\xF3lido. As dimens\xF5es das faces s\xE3o preservadas.</p></div>` : ""}${s.type === "esfera" ? '<p class="small">A esfera n\xE3o admite planifica\xE7\xE3o exata sem deforma\xE7\xE3o.</p>' : ""}</div>`;
+    } = ctx, s = state2.geometry, curved = ["cilindro", "cone", "esfera"].includes(s.type), normal = s.view === "solid", truncated = isFrustum(s);
+    let controls = `<div class="control-title">Seu s\xF3lido <span>\u25C7</span></div>${select2("shape", "Escolha o s\xF3lido", Object.entries(SOLID_NAMES), s.type)}${["cone", "piramide"].includes(s.type) ? select2(
+      "solid-part",
+      "Objeto de estudo",
+      [
+        ["whole", "S\xF3lido completo"],
+        ["frustum", "Tronco"]
+      ],
+      truncated ? "frustum" : "whole"
+    ) : ""}${select2("camera-view", "Vista do s\xF3lido", [...Object.entries(CAMERA_VIEWS).map(([key, v2]) => [key, v2.label]), ["custom", "Rota\xE7\xE3o livre"]], s.camera)}<div class="control-section"><h2>Dimens\xF5es \xB7 unidades de comprimento</h2>${range2("dim-a", curved ? truncated ? "Raio da base maior (R)" : "Raio (r)" : s.type === "cubo" ? "Aresta (a)" : "Lado da base (a)", s.a, 0.5, 20, 0.1)}${!["cubo", "esfera"].includes(s.type) ? range2("dim-h", "Altura (h)", s.h, 0.5, 20, 0.1) : ""}${truncated ? range2("dim-top", s.type === "cone" ? "Raio da base menor (r)" : "Lado da base menor (b)", s.top, 0.1, s.a, 0.1) : ""}${s.type === "prisma" ? range2("dim-b", "Largura da base (b)", s.b, 0.5, 20, 0.1) : ""}</div><div class="control-section"><h2>Explore a estrutura</h2><div class="segmented">${[["solid", "S\xF3lido 3D"], ["net", "Planifica\xE7\xE3o"], ["exploded", "Vista explodida"], ...curved ? [["revolution", "Revolu\xE7\xE3o"]] : []].map(([v2, l]) => `<button data-view="${v2}" aria-pressed="${s.view === v2}" ${s.type === "esfera" && ["net", "exploded"].includes(v2) ? 'disabled title="A esfera n\xE3o tem planifica\xE7\xE3o plana exata"' : ""} class="${s.view === v2 ? "selected" : ""}">${l}</button>`).join("")}</div>${s.view === "net" ? `<div class="dynamic-control">${range2("opening", "Abertura da planifica\xE7\xE3o", s.opening, 0, 100, 1, "%")}<div class="range-ends"><span>Fechado</span><span>Aberto</span></div><p class="small">Arraste o controle para abrir e fechar o s\xF3lido. As dimens\xF5es das faces s\xE3o preservadas.</p></div>` : ""}${s.type === "esfera" ? '<p class="small">A esfera n\xE3o admite planifica\xE7\xE3o exata sem deforma\xE7\xE3o.</p>' : ""}</div>`;
     if (s.view === "revolution")
       controls += `<div class="control-section"><h2>Gerar por revolu\xE7\xE3o</h2>${select2(
         "rotation-axis",
@@ -1123,7 +1326,7 @@
           ["x", "Eixo x"]
         ],
         s.axis
-      )}${range2("sweep", "\xC2ngulo de rota\xE7\xE3o", s.revolution, 0, 360, 1, "\xB0")}<div class="inline-actions"><button id="sweep-zero">Figura plana</button><button id="sweep-full">Volta completa</button></div><p class="small">${s.type === "cilindro" ? "Um ret\xE2ngulo gira em torno de um de seus lados." : s.type === "cone" ? "Um tri\xE2ngulo ret\xE2ngulo gira em torno de um de seus catetos." : "Um semic\xEDrculo gira em torno de seu di\xE2metro."} A figura geradora aparece em laranja.</p></div>`;
+      )}${range2("sweep", "\xC2ngulo de rota\xE7\xE3o", s.revolution, 0, 360, 1, "\xB0")}<div class="inline-actions"><button id="sweep-zero">Figura plana</button><button id="sweep-full">Volta completa</button></div><p class="small">${s.type === "cilindro" ? "Um ret\xE2ngulo gira em torno de um de seus lados." : s.type === "cone" ? truncated ? "Um trap\xE9zio ret\xE2ngulo gira em torno do lado perpendicular \xE0s bases." : "Um tri\xE2ngulo ret\xE2ngulo gira em torno de um de seus catetos." : "Um semic\xEDrculo gira em torno de seu di\xE2metro."} A figura geradora aparece em laranja.</p></div>`;
     if (s.type === "esfera" && normal)
       controls += `<div class="control-section"><h2>Partes da esfera</h2>${select2(
         "sphere-part",
@@ -1137,7 +1340,7 @@
       )}${s.part === "cap" ? range2("cap-height", "Altura da calota (h)", s.capHeight, 0.05, 2 * s.a, 0.05) : s.part === "wedge" ? range2("wedge-angle", "\xC2ngulo da cunha (\u03B8)", s.wedge, 1, 360, 1, "\xB0") : ""}</div>`;
     controls += `<div class="control-section"><h2>Elementos vis\xEDveis</h2>${check2("faces", curved ? "Superf\xEDcies" : "Faces", s.faces)}${!curved ? check2("edges", "Arestas", s.edges) + check2("vertices", "V\xE9rtices", s.vertices) : ""}${normal ? check2("measure", "Medidas", s.measure) : ""}${normal && ["cone", "cilindro", "piramide"].includes(s.type) ? check2("guide", s.type === "piramide" ? "Ap\xF3tema lateral (\u2113)" : "Geratriz (g)", s.guide) : ""}</div>`;
     if (s.type === "piramide" && normal)
-      controls += `<div class="control-section"><h2>Constru\xE7\xF5es auxiliares</h2>${check2("diagonal", "Diagonal da base", s.diagonal)}${check2("triangleApothem", "Tri\xE2ngulo do ap\xF3tema lateral", s.triangleApothem)}${check2("triangleEdge", "Tri\xE2ngulo da aresta lateral", s.triangleEdge)}<p class="small">Os dois tri\xE2ngulos t\xEAm \xE2ngulo reto no centro da base.</p></div>`;
+      controls += `<div class="control-section"><h2>Constru\xE7\xF5es auxiliares</h2>${check2("diagonal", "Diagonal da base", s.diagonal)}${!truncated ? check2("triangleApothem", "Tri\xE2ngulo do ap\xF3tema lateral", s.triangleApothem) : ""}${!truncated ? check2("triangleEdge", "Tri\xE2ngulo da aresta lateral", s.triangleEdge) : ""}${!truncated ? '<p class="small">Os dois tri\xE2ngulos t\xEAm \xE2ngulo reto no centro da base.</p>' : '<p class="small">As bases s\xE3o quadrados paralelos e semelhantes.</p>'}</div>`;
     $2("#main").innerHTML = shell2(
       "Geometria espacial",
       "Abra, construa e investigue os s\xF3lidos em movimento.",
@@ -1179,8 +1382,21 @@
       s.capHeight = Math.min(s.capHeight, 2 * s.a);
       render2();
     };
+    if ($2("#solid-part"))
+      $2("#solid-part").onchange = (e) => {
+        s.frustum = e.target.value === "frustum";
+        s.top = Math.min(s.top, s.a);
+        render2();
+      };
+    bind("dim-top", "top");
     bind("dim-a", "a", "", () => {
       s.capHeight = Math.min(s.capHeight, 2 * s.a);
+      s.top = Math.min(s.top, s.a);
+      if ($2("#dim-top")) {
+        $2("#dim-top").max = s.a;
+        $2("#dim-top").value = s.top;
+        $2("#dim-top-out").textContent = fmt2(s.top);
+      }
       if ($2("#cap-height")) {
         $2("#cap-height").max = 2 * s.a;
         $2("#cap-height").value = s.capHeight;
@@ -1224,15 +1440,15 @@
         s.axis = e.target.value;
         draw();
       };
-    for (const [id, v] of [
+    for (const [id, v2] of [
       ["sweep-zero", 0],
       ["sweep-full", 360]
     ])
       if ($2("#" + id))
         $2("#" + id).onclick = () => {
-          s.revolution = v;
-          $2("#sweep").value = v;
-          $2("#sweep-out").textContent = v + "\xB0";
+          s.revolution = v2;
+          $2("#sweep").value = v2;
+          $2("#sweep-out").textContent = v2 + "\xB0";
           draw();
         };
     $2("#zoom-out").onclick = () => {
@@ -1293,12 +1509,12 @@
       draw();
     };
     function draw() {
-      const m = solidMetrics(s.type, s.a, s.h, s.b), cap = capMetrics(s.a, s.capHeight), wedge = wedgeMetrics(s.a, s.wedge);
-      $2("#solid-name").textContent = SOLID_NAMES[s.type] + (s.type === "esfera" && normal && s.part !== "whole" ? " \xB7 " + (s.part === "cap" ? "calota" : "cunha") : "");
+      const m = truncated ? frustumMetrics(s.type, s.a, s.top, s.h) : solidMetrics(s.type, s.a, s.h, s.b), cap = capMetrics(s.a, s.capHeight), wedge = wedgeMetrics(s.a, s.wedge);
+      $2("#solid-name").textContent = (truncated ? "Tronco de " + SOLID_NAMES[s.type].toLowerCase() : SOLID_NAMES[s.type]) + (s.type === "esfera" && normal && s.part !== "whole" ? " \xB7 " + (s.part === "cap" ? "calota" : "cunha") : "");
       $2("#view-label").textContent = s.view === "net" ? `Abertura ${fmt2(s.opening, 0)}% \xB7 faces em escala` : s.view === "revolution" ? `Rota\xE7\xE3o de ${fmt2(s.revolution, 0)}\xB0 em torno do eixo ${s.axis}` : s.view === "exploded" ? "Partes afastadas para observa\xE7\xE3o" : "Proje\xE7\xE3o ortogr\xE1fica";
       const viewName = CAMERA_VIEWS[s.camera]?.label || "Rota\xE7\xE3o livre";
       $2("#view-label").textContent = viewName + " \xB7 " + $2("#view-label").textContent;
-      let detail = `<span class="formula">A = ${m.formulaA} &nbsp; \xB7 &nbsp; V = ${m.formulaV}</span><p>u.a.: unidades de \xE1rea \xB7 u.v.: unidades de volume.</p>`;
+      let detail = geometryFormula(s);
       if (s.view === "revolution") {
         $2("#solid-metrics").innerHTML = metric2("\xC1rea do s\xF3lido completo", fmt2(m.area) + " u.a.") + metric2(
           "Volume varrido",
@@ -1315,28 +1531,28 @@
           fmt2(cap.volume) + " u.v.",
           "\u03C0h\xB2(r \u2212 h/3)"
         ) + metric2("\xC1rea da base circular", fmt2(cap.base) + " u.a.", "\u03C0(2rh \u2212 h\xB2)");
-        detail = `<span class="formula">A<sub>calota</sub> = 2\u03C0rh &nbsp; \xB7 &nbsp; V = \u03C0h\xB2(r \u2212 h/3)</span><p>Altura h = ${fmt2(s.capHeight)}; raio da base \u03C1 = \u221A(2rh \u2212 h\xB2) = ${fmt2(cap.baseRadius)}. \xC1rea total do segmento fechado: ${fmt2(cap.total)} u.a. A calota \xE9 a superf\xEDcie curva; o volume corresponde ao segmento esf\xE9rico.</p>`;
+        detail += `<p>Altura h = ${fmt2(s.capHeight)}; raio da base \u03C1 = \u221A(2rh \u2212 h\xB2) = ${fmt2(cap.baseRadius)}. \xC1rea total do segmento fechado: ${fmt2(cap.total)} u.a. A calota \xE9 a superf\xEDcie curva; o volume corresponde ao segmento esf\xE9rico.</p>`;
       } else if (s.type === "esfera" && s.part === "wedge") {
         $2("#solid-metrics").innerHTML = metric2("\xC1rea curva do fuso", fmt2(wedge.curved) + " u.a.") + metric2("Volume da cunha", fmt2(wedge.volume) + " u.v.") + metric2(
           "\xC1rea total da cunha",
           fmt2(wedge.total) + " u.a.",
           "Inclui os cortes planos"
         );
-        detail = `<span class="formula">V = (\u03B8 / 360\xB0) \xB7 4\u03C0r\xB3/3</span><p>A<sub>curva</sub> = (\u03B8 / 360\xB0) \xB7 4\u03C0r\xB2. Para 0\xB0 &lt; \u03B8 &lt; 360\xB0, os dois semic\xEDrculos dos cortes somam \u03C0r\xB2. Em 360\xB0, n\xE3o h\xE1 cortes.</p>`;
+        detail += `<p>Para 0\xB0 &lt; \u03B8 &lt; 360\xB0, os dois semic\xEDrculos dos cortes somam \u03C0r\xB2. Em 360\xB0, n\xE3o h\xE1 cortes.</p>`;
       } else {
         $2("#solid-metrics").innerHTML = metric2("\xC1rea total", fmt2(m.area) + " u.a.") + metric2("Volume", fmt2(m.volume) + " u.v.") + metric2(
           m.vertices !== null ? "V\xE9rtices \xB7 arestas \xB7 faces" : "Superf\xEDcies",
-          m.vertices !== null ? `${m.vertices} \xB7 ${m.edges} \xB7 ${m.faces}` : s.type === "esfera" ? "1 curva" : s.type === "cone" ? "1 plana + 1 curva" : "2 planas + 1 curva"
+          m.vertices !== null ? `${m.vertices} \xB7 ${m.edges} \xB7 ${m.faces}` : s.type === "esfera" ? "1 curva" : s.type === "cone" && !truncated ? "1 plana + 1 curva" : "2 planas + 1 curva"
         );
         if (m.g)
-          detail += `<p>${s.type === "piramide" ? "Ap\xF3tema lateral \u2113" : "Geratriz g"} = ${fmt2(m.g)}. ${s.type === "cone" ? "g\xB2 = r\xB2 + h\xB2." : s.type === "piramide" ? "\u2113\xB2 = h\xB2 + (a/2)\xB2." : ""}</p>`;
+          detail += `<p>${s.type === "piramide" ? "Ap\xF3tema lateral \u2113" : "Geratriz g"} = ${fmt2(m.g)}. ${truncated ? s.type === "cone" ? "g\xB2 = h\xB2 + (R \u2212 r)\xB2." : "\u2113\xB2 = h\xB2 + ((a \u2212 b)/2)\xB2." : s.type === "cone" ? "g\xB2 = r\xB2 + h\xB2." : s.type === "piramide" ? "\u2113\xB2 = h\xB2 + (a/2)\xB2." : ""}</p>`;
       }
       if (s.type === "piramide" && normal) {
         if (s.diagonal)
-          detail += `<p><strong>Diagonal:</strong> d = a\u221A2 = ${fmt2(s.a * Math.SQRT2)}.</p>`;
-        if (s.triangleApothem)
+          detail += `<p><strong>Diagonal:</strong> d = a\u221A2 = ${fmt2(s.a)}\u221A2.</p>`;
+        if (!truncated && s.triangleApothem)
           detail += `<p class="blue-note"><strong>Tri\xE2ngulo do ap\xF3tema:</strong> \u2113\xB2 = h\xB2 + (a/2)\xB2 = ${fmt2(s.h * s.h)} + ${fmt2((s.a / 2) ** 2)}; \u2113 = ${fmt2(Math.hypot(s.h, s.a / 2))}.</p>`;
-        if (s.triangleEdge)
+        if (!truncated && s.triangleEdge)
           detail += `<p class="purple-note"><strong>Tri\xE2ngulo da aresta:</strong> e\xB2 = h\xB2 + (d/2)\xB2 = ${fmt2(s.h * s.h)} + ${fmt2(s.a * s.a / 2)}; e = ${fmt2(Math.hypot(s.h, s.a / Math.SQRT2))}.</p>`;
       }
       $2("#solid-formulas").innerHTML = detail;
@@ -1352,15 +1568,15 @@
   }
   function renderScene(s, svg, fmt2) {
     let { faces, poly } = solidScene(s), { rx, ry } = cameraAngles(s), frame = faces.flatMap((f) => f.points), annotations = [];
-    const curved = ["cilindro", "cone", "esfera"].includes(s.type), H = s.type === "cubo" ? s.a : s.h;
+    const curved = ["cilindro", "cone", "esfera"].includes(s.type), H = s.type === "cubo" ? s.a : s.h, truncated = isFrustum(s);
     if (s.view === "net") {
-      let open = s.type === "piramide" ? pyramidNet(s.a, s.h, 1) : s.type === "cilindro" ? cylinderNet(s.a, s.h, 1) : s.type === "cone" ? coneNet(s.a, s.h, 1) : cuboidNet(s.a, H, s.type === "cubo" ? s.a : s.b, 1);
+      let open = truncated ? frustumNet(s.type, s.a, s.top, s.h, 1) : s.type === "piramide" ? pyramidNet(s.a, s.h, 1) : s.type === "cilindro" ? cylinderNet(s.a, s.h, 1) : s.type === "cone" ? coneNet(s.a, s.h, 1) : cuboidNet(s.a, H, s.type === "cubo" ? s.a : s.b, 1);
       frame = frame.concat(open.flatMap((f) => f.points));
     }
     const line = (p, q, label, color = "#8a4b24", dash = false, dx = 10, dy = -10) => annotations.push({ kind: "line", p, q, label, color, dash, dx, dy });
     const tri = (points, color) => annotations.push({ kind: "triangle", points, color });
     if (s.view === "revolution") {
-      const profile = revolutionProfile(s.type, s.a, s.h), points = profile.map(
+      const profile = revolutionProfile(s.type, s.a, s.h, truncated ? s.top : 0), points = profile.map(
         (p) => revolvePoint(p, s.revolution * Math.PI / 180, s.axis)
       );
       annotations.push({ kind: "profile", points, color: "#c27719" });
@@ -1379,6 +1595,22 @@
       );
     }
     if (s.view === "solid" && s.measure) {
+      if (truncated) {
+        if (s.type === "cone")
+          line(
+            [0, s.h / 2, 0],
+            [s.top, s.h / 2, 0],
+            `r = ${fmt2(s.top)}`,
+            "#285d85"
+          );
+        else
+          line(
+            [-s.top / 2, s.h / 2, s.top / 2],
+            [s.top / 2, s.h / 2, s.top / 2],
+            `b = ${fmt2(s.top)}`,
+            "#285d85"
+          );
+      }
       if (!curved) {
         let y = -H / 2, z = (s.type === "prisma" ? s.b : s.a) / 2;
         line(
@@ -1397,7 +1629,7 @@
             `b = ${fmt2(s.b)}`,
             "#285d85"
           );
-        if (s.type !== "cubo" && !(s.type === "piramide" && (s.triangleApothem || s.triangleEdge)))
+        if (s.type !== "cubo" && !(s.type === "piramide" && !truncated && (s.triangleApothem || s.triangleEdge)))
           line([0, -H / 2, 0], [0, H / 2, 0], `h = ${fmt2(H)}`, "#7452a1", true);
       } else if (s.type === "esfera") {
         line([0, 0, 0], [s.a, 0, 0], `r = ${fmt2(s.a)}`);
@@ -1410,7 +1642,11 @@
             true
           );
       } else {
-        line([0, -s.h / 2, 0], [s.a, -s.h / 2, 0], `r = ${fmt2(s.a)}`);
+        line(
+          [0, -s.h / 2, 0],
+          [s.a, -s.h / 2, 0],
+          `${truncated ? "R" : "r"} = ${fmt2(s.a)}`
+        );
         line(
           [0, -s.h / 2, 0],
           [0, s.h / 2, 0],
@@ -1420,12 +1656,12 @@
         );
       }
     }
-    if (s.view === "solid" && s.guide && !(s.type === "piramide" && s.triangleApothem) && ["piramide", "cone", "cilindro"].includes(s.type)) {
-      const p = s.type === "piramide" ? [0, -s.h / 2, s.a / 2] : [s.a, -s.h / 2, 0], q = s.type === "cilindro" ? [s.a, s.h / 2, 0] : [0, s.h / 2, 0];
+    if (s.view === "solid" && s.guide && !(s.type === "piramide" && !truncated && s.triangleApothem) && ["piramide", "cone", "cilindro"].includes(s.type)) {
+      const p = s.type === "piramide" ? [0, -s.h / 2, s.a / 2] : [s.a, -s.h / 2, 0], q = s.type === "cilindro" ? [s.a, s.h / 2, 0] : truncated ? s.type === "cone" ? [s.top, s.h / 2, 0] : [0, s.h / 2, s.top / 2] : [0, s.h / 2, 0];
       line(
         p,
         q,
-        `${s.type === "piramide" ? "\u2113" : "g"} = ${fmt2(s.type === "cilindro" ? s.h : Math.hypot(s.h, s.type === "piramide" ? s.a / 2 : s.a))}`
+        `${s.type === "piramide" ? "\u2113" : "g"} = ${fmt2(s.type === "cilindro" ? s.h : Math.hypot(s.h, s.type === "piramide" ? (s.a - (truncated ? s.top : 0)) / 2 : s.a - (truncated ? s.top : 0)))}`
       );
     }
     if (s.type === "piramide" && s.view === "solid") {
@@ -1434,7 +1670,7 @@
         line(
           [-s.a / 2, -s.h / 2, -s.a / 2],
           C,
-          `d = ${fmt2(s.a * Math.SQRT2)}`,
+          `d = ${fmt2(s.a)}\u221A2`,
           "#a0593a",
           true,
           -110,
@@ -1444,7 +1680,7 @@
         [s.triangleApothem, M, "#246d9c", "\u2113"],
         [s.triangleEdge, C, "#8551a4", "e"]
       ])
-        if (enabled) {
+        if (enabled && !truncated) {
           tri([O, P, S], color);
           if (label === "\u2113" || !s.triangleApothem)
             line(O, S, `h = ${fmt2(s.h)}`, color, false, -53, -10);
@@ -1485,11 +1721,11 @@
         [1, 1, 1]
       ];
     const rotation = ([x, y, z]) => {
-      let u = x * Math.cos(ry) + z * Math.sin(ry), v = -x * Math.sin(ry) + z * Math.cos(ry);
+      let u = x * Math.cos(ry) + z * Math.sin(ry), v2 = -x * Math.sin(ry) + z * Math.cos(ry);
       return [
         u,
-        y * Math.cos(rx) - v * Math.sin(rx),
-        y * Math.sin(rx) + v * Math.cos(rx)
+        y * Math.cos(rx) - v2 * Math.sin(rx),
+        y * Math.sin(rx) + v2 * Math.cos(rx)
       ];
     };
     let bounds = frame.map(rotation), mins = [0, 1].map((k) => Math.min(...bounds.map((p) => p[k]))), maxs = [0, 1].map((k) => Math.max(...bounds.map((p) => p[k]))), cx = (mins[0] + maxs[0]) / 2, cy = (mins[1] + maxs[1]) / 2, factor = Math.min(
@@ -1499,11 +1735,11 @@
     ) * s.zoom, proj = (p) => {
       let [x, y] = rotation(p);
       return [400 + (x - cx) * factor, 240 - (y - cy) * factor];
-    }, pts = (points) => points.map(proj).map((p) => p.map((v) => v.toFixed(2)).join(",")).join(" ");
+    }, pts = (points) => points.map(proj).map((p) => p.map((v2) => v2.toFixed(2)).join(",")).join(" ");
     let ordered = faces.map((f) => ({
       ...f,
       z: f.points.reduce(
-        (sum, p) => sum + rotation(p)[2] / f.points.length,
+        (sum2, p) => sum2 + rotation(p)[2] / f.points.length,
         0
       )
     })).sort((a, b) => a.z - b.z), html = "";
@@ -1522,9 +1758,9 @@
       else if (a.kind === "right")
         html += `<polyline points="${pts(a.points)}" fill="none" stroke="${a.color}" stroke-width="2"/>`;
       else {
-        const [x, y] = proj(a.p), [u, v] = proj(a.q);
-        if (Math.hypot(u - x, v - y) < 3) continue;
-        html += `<path d="M${x} ${y}L${u} ${v}" fill="none" stroke="${a.color}" stroke-width="2.2" ${a.dash ? 'stroke-dasharray="6 5"' : ""}/><text x="${(x + u) / 2 + a.dx}" y="${(y + v) / 2 + a.dy}" font-family="sans-serif" font-size="17" fill="${a.color}" stroke="#fcfdf9" stroke-width="4" paint-order="stroke">${a.label}</text>`;
+        const [x, y] = proj(a.p), [u, v2] = proj(a.q);
+        if (Math.hypot(u - x, v2 - y) < 3) continue;
+        html += `<path d="M${x} ${y}L${u} ${v2}" fill="none" stroke="${a.color}" stroke-width="2.2" ${a.dash ? 'stroke-dasharray="6 5"' : ""}/><text x="${(x + u) / 2 + a.dx}" y="${(y + v2) / 2 + a.dy}" font-family="sans-serif" font-size="17" fill="${a.color}" stroke="#fcfdf9" stroke-width="4" paint-order="stroke">${a.label}</text>`;
       }
     }
     svg.innerHTML = html;
@@ -1532,15 +1768,15 @@
 
   // assets/graph-analysis.js
   function findIntersections(curves, view) {
-    const points = [], n = 600, span = view.xmax - view.xmin;
+    const points = [], n2 = 600, span = view.xmax - view.xmin;
     const tolerance = Math.max(1e-10, (view.ymax - view.ymin) * 1e-9);
     for (let a = 0; a < curves.length; a++)
       for (let b = a + 1; b < curves.length; b++) {
         const f = curves[a].fn, g = curves[b].fn;
         if (!f || !g) continue;
         const diff = (x) => f(x) - g(x);
-        const samples = Array.from({ length: n + 1 }, (_, i) => ({
-          x: view.xmin + span * i / n
+        const samples = Array.from({ length: n2 + 1 }, (_, i) => ({
+          x: view.xmin + span * i / n2
         }));
         samples.forEach((p) => p.d = diff(p.x));
         if (samples.every((p) => Number.isFinite(p.d) && Math.abs(p.d) < tolerance))
@@ -1568,7 +1804,7 @@
           curves[b].domainMax
         ])
           if (Number.isFinite(x) && x >= view.xmin && x <= view.xmax) add2(x);
-        for (let i = 0; i < n; i++) {
+        for (let i = 0; i < n2; i++) {
           const p = samples[i], q = samples[i + 1];
           if (!Number.isFinite(p.d) || !Number.isFinite(q.d)) continue;
           if (p.d * q.d < 0) {
@@ -1588,7 +1824,7 @@
             add2((lo + hi) / 2);
           }
         }
-        for (let i = 0; i <= n; i++) {
+        for (let i = 0; i <= n2; i++) {
           const p = samples[i], prev = samples[i - 1], next = samples[i + 1];
           if (p.d === 0 && (!prev || prev.d !== 0) && (!next || next.d !== 0))
             add2(p.x);
@@ -1618,13 +1854,13 @@
           (p) => ({ ...p, kind: "Zero", description: c.name })
         )
       );
-    const result = [], n = 600, dx = (view.xmax - view.xmin) / n;
+    const result = [], n2 = 600, dx = (view.xmax - view.xmin) / n2;
     for (const c of curves) {
       const values = Array.from(
-        { length: n + 1 },
+        { length: n2 + 1 },
         (_, i) => c.fn(view.xmin + i * dx)
       );
-      for (let i = 1; i < n; i++) {
+      for (let i = 1; i < n2; i++) {
         const a = values[i - 1], b = values[i], d = values[i + 1];
         if (![a, b, d].every(Number.isFinite)) continue;
         const sign = b < a && b < d ? 1 : b > a && b > d ? -1 : 0;
@@ -1690,14 +1926,14 @@
     const input = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
     if (input.length < 33 || input[0] !== 137 || input[1] !== 80)
       throw Error("PNG inv\xE1lido.");
-    const chunk = new Uint8Array(21), v = new DataView(chunk.buffer);
-    v.setUint32(0, 9);
+    const chunk = new Uint8Array(21), v2 = new DataView(chunk.buffer);
+    v2.setUint32(0, 9);
     chunk.set([112, 72, 89, 115], 4);
     const ppm = Math.round(dpi / 0.0254);
-    v.setUint32(8, ppm);
-    v.setUint32(12, ppm);
+    v2.setUint32(8, ppm);
+    v2.setUint32(12, ppm);
     chunk[16] = 1;
-    v.setUint32(17, crc32(chunk.slice(4, 17)));
+    v2.setUint32(17, crc32(chunk.slice(4, 17)));
     const parts = [input.slice(0, 33), chunk];
     let offset = 33;
     while (offset + 12 <= input.length) {
@@ -1711,7 +1947,7 @@
         parts.push(input.slice(offset, end));
       offset = end;
     }
-    const out = new Uint8Array(parts.reduce((n, b) => n + b.length, 0));
+    const out = new Uint8Array(parts.reduce((n2, b) => n2 + b.length, 0));
     let pos = 0;
     for (const p of parts) {
       out.set(p, pos);
@@ -1729,13 +1965,30 @@
       ymax: view.ymax + dy
     };
   }
+  function gestureWindow(view, geometry2, start, current2) {
+    const midpoint = (ps) => ({
+      x: ps.reduce((n2, p) => n2 + p.x, 0) / ps.length,
+      y: ps.reduce((n2, p) => n2 + p.y, 0) / ps.length
+    });
+    const a = midpoint(start), b = midpoint(current2);
+    const distance = (ps) => Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y);
+    const factor = start.length === 2 ? Math.max(1, distance(start)) / Math.max(1, distance(current2)) : 1;
+    const anchorX = view.xmin + (a.x - geometry2.left) / geometry2.W * (view.xmax - view.xmin);
+    const anchorY = view.ymax - (a.y - geometry2.top) / geometry2.H * (view.ymax - view.ymin);
+    const next = zoomWindow(view, factor, anchorX, anchorY);
+    return panWindow(
+      next,
+      -(b.x - a.x) * (next.xmax - next.xmin) / geometry2.W,
+      (b.y - a.y) * (next.ymax - next.ymin) / geometry2.H
+    );
+  }
 
   // assets/plot.js
   var xml = (s) => String(s).replace(
     /[&<>"']/g,
     (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]
   );
-  var decimal = (n, d = 3) => Number.isFinite(n) ? Number(n.toFixed(d)).toLocaleString("pt-BR", {
+  var decimal = (n2, d = 3) => Number.isFinite(n2) ? Number(n2.toFixed(d)).toLocaleString("pt-BR", {
     maximumFractionDigits: d,
     useGrouping: false
   }) : "indefinido";
@@ -1743,11 +1996,11 @@
     const raw = span / space, p = 10 ** Math.floor(Math.log10(raw));
     return [1, 2, 2.5, 5, 10].map((x) => x * p).find((x) => x >= raw) || 10 * p;
   }
-  function axisNumber(n, o = {}) {
-    return o.professional ? Number(n.toFixed(4)).toLocaleString("pt-BR", {
+  function axisNumber(n2, o = {}) {
+    return o.professional ? Number(n2.toFixed(4)).toLocaleString("pt-BR", {
       maximumFractionDigits: 4,
       useGrouping: true
-    }).replaceAll(".", " ") : decimal(n, 4);
+    }).replaceAll(".", " ") : decimal(n2, 4);
   }
   function radianTick(x, top, value, font = 15) {
     const label = piLabel(value), m = label.match(/^([−-]?)([^/]+)\/(\d+)$/);
@@ -1788,8 +2041,8 @@
       H,
       X,
       Y,
-      fromX: (v) => o.xmin + (v - left) / W * (o.xmax - o.xmin),
-      fromY: (v) => o.ymax - (v - top) / H * (o.ymax - o.ymin)
+      fromX: (v2) => o.xmin + (v2 - left) / W * (o.xmax - o.xmin),
+      fromY: (v2) => o.ymax - (v2 - top) / H * (o.ymax - o.ymin)
     };
   }
   function curvePath(fn, o, breaks = []) {
@@ -1842,10 +2095,10 @@
     ];
     for (let k = 0; k < cuts.length - 1; k++) {
       last = null;
-      const eps = span * 1e-8, lo = cuts[k] + (k ? eps : 0), hi = cuts[k + 1] - (k < cuts.length - 2 ? eps : 0), n = Math.max(4, Math.ceil(450 * (hi - lo) / span));
+      const eps = span * 1e-8, lo = cuts[k] + (k ? eps : 0), hi = cuts[k + 1] - (k < cuts.length - 2 ? eps : 0), n2 = Math.max(4, Math.ceil(450 * (hi - lo) / span));
       let p = { x: lo, y: fn(lo) };
-      for (let i = 1; i <= n; i++) {
-        let x = lo + (hi - lo) * i / n, q = { x, y: fn(x) };
+      for (let i = 1; i <= n2; i++) {
+        let x = lo + (hi - lo) * i / n2, q = { x, y: fn(x) };
         segment(p, q);
         p = q;
       }
@@ -1903,14 +2156,14 @@
     );
     const ticks = (values, axis, step) => {
       const special = visiblePoints.filter((p) => p.project || Math.abs(p[axis === "x" ? "y" : "x"]) < 1e-9).map((p) => p[axis]);
-      const all = (o.tickMode === "points" ? [] : values).map((v) => ({
-        v,
+      const all = (o.tickMode === "points" ? [] : values).map((v2) => ({
+        v: v2,
         special: false
       }));
-      for (const v of special) {
-        const same = all.find((p) => Math.abs(p.v - v) < step * 1e-7);
+      for (const v2 of special) {
+        const same = all.find((p) => Math.abs(p.v - v2) < step * 1e-7);
         if (same) same.special = true;
-        else all.push({ v, special: true });
+        else all.push({ v: v2, special: true });
       }
       return all.sort((a, b) => a.v - b.v);
     };
@@ -1923,23 +2176,23 @@
       html += `<path d="M${u} ${xAxis - 3}v6" stroke="${ink}" stroke-width=".9"/>`;
       const crowded = !t.special && xt.some((p) => p.special && Math.abs(X(p.v) - u) < (o.radians ? 42 : 28));
       if (Math.abs(t.v) > xstep * 1e-7 && !crowded && (t.special || Math.abs(Math.round(t.v / xstep)) % xSkip === 0)) {
-        const text = o.radians ? piLabel(t.v) : axisNumber(t.v, o), frac = o.radians && text.includes("/"), width = (frac ? text.split("/")[0].length : text.length) * font * 0.58 + 8;
+        const text = o.radians ? piLabel(t.v) : axisNumber(t.v, o), frac2 = o.radians && text.includes("/"), width = (frac2 ? text.split("/")[0].length : text.length) * font * 0.58 + 8;
         labelHoles.push(
-          `<rect x="${u - width / 2}" y="${xAxis + 5}" width="${width}" height="${frac ? font * 2.1 + 6 : font + 8}" fill="#000"/>`
+          `<rect x="${u - width / 2}" y="${xAxis + 5}" width="${width}" height="${frac2 ? font * 2.1 + 6 : font + 8}" fill="#000"/>`
         );
         html += o.radians ? radianTick(u, xAxis + 8, t.v, font) : `<text x="${u}" y="${xAxis + font + 8}" text-anchor="middle">${xml(text)}</text>`;
       }
     }
     for (const t of yt) {
-      const v = Y(t.v);
-      html += `<path d="M${yAxis - 3} ${v}h6" stroke="${ink}" stroke-width=".9"/>`;
-      const crowded = !t.special && yt.some((p) => p.special && Math.abs(Y(p.v) - v) < font * 1.4);
+      const v2 = Y(t.v);
+      html += `<path d="M${yAxis - 3} ${v2}h6" stroke="${ink}" stroke-width=".9"/>`;
+      const crowded = !t.special && yt.some((p) => p.special && Math.abs(Y(p.v) - v2) < font * 1.4);
       if (Math.abs(t.v) > ystep * 1e-7 && !crowded && (t.special || Math.abs(Math.round(t.v / ystep)) % ySkip === 0)) {
         const text = axisNumber(t.v, o), width = text.length * font * 0.58 + 6;
         labelHoles.push(
-          `<rect x="${yAxis - 13 - width}" y="${v - font * 0.7}" width="${width + 6}" height="${font + 5}" fill="#000"/>`
+          `<rect x="${yAxis - 13 - width}" y="${v2 - font * 0.7}" width="${width + 6}" height="${font + 5}" fill="#000"/>`
         );
-        html += `<text x="${yAxis - 10}" y="${v + font * 0.32}" text-anchor="end">${xml(text)}</text>`;
+        html += `<text x="${yAxis - 10}" y="${v2 + font * 0.32}" text-anchor="end">${xml(text)}</text>`;
       }
     }
     html += `<g class="graph-axes" fill="none" stroke="${ink}" stroke-width="1.1"><path d="M${left} ${xAxis}H${w - right}" marker-end="url(#axis-arrow)"/><path d="M${yAxis} ${h - bottom}V${top}" marker-end="url(#axis-arrow)"/></g>`;
@@ -1952,7 +2205,7 @@
       font,
       (yAxis - 18) / Math.max(1, (o.ylabel || "").length * 0.52)
     );
-    html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset}" y="${xAxis + font + 9}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12}" y="${top - 10}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
+    html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset + (o.xlabelDx || 0)}" y="${xAxis + font + 9 + (o.xlabelDy || 0)}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12 + (o.ylabelDx || 0)}" y="${top - 10 + (o.ylabelDy || 0)}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
     for (const guide2 of o.guides || []) {
       if (guide2.axis === "x" && guide2.value >= o.xmin && guide2.value <= o.xmax) {
         let x = X(guide2.value);
@@ -1984,7 +2237,11 @@
           (r) => l2 < r.r && l2 + lw > r.l && c2.y > r.t && c2.y - font < r.b
         );
       };
-      const c = candidates.find(valid) || candidates[0], l = c.anchor === "end" ? c.x - lw : c.x;
+      const base = candidates.find(valid) || candidates[0], c = {
+        ...base,
+        x: base.x + (p.labelDx || 0),
+        y: base.y + (p.labelDy || 0)
+      }, l = c.anchor === "end" ? c.x - lw : c.x;
       occupied.push({ l, r: l + lw, t: c.y - font, b: c.y });
       html += `<g class="fixed-point"><circle cx="${x}" cy="${y}" r="3.5" fill="${ink}"/><text x="${c.x}" y="${c.y}" text-anchor="${c.anchor}" font-weight="700" font-style="${p.label ? "italic" : "normal"}">${xml(label)}</text></g>`;
     }
@@ -2146,55 +2403,70 @@
     return () => element.removeEventListener("wheel", wheel);
   }
   function attachGraphPan(element, getOptions, apply) {
-    let drag = null;
-    const down = (e) => {
-      if (e.button !== 0 || drag) return;
+    const pointers = /* @__PURE__ */ new Map();
+    let gesture = null;
+    const reset = () => {
+      if (!pointers.size) {
+        gesture = null;
+        delete element.dataset.dragging;
+        return;
+      }
       const matrix = element.getScreenCTM();
       if (!matrix) return;
-      const inverse = matrix.inverse(), p = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
+      const inverse = matrix.inverse();
+      const positions = [...pointers.values()].slice(0, 2).map((p) => new DOMPoint(p.x, p.y).matrixTransform(inverse));
       const o = getOptions();
-      drag = {
-        id: e.pointerId,
-        p,
+      gesture = {
         inverse,
+        positions,
         view: { xmin: o.xmin, xmax: o.xmax, ymin: o.ymin, ymax: o.ymax },
         geometry: graphGeometry(o)
       };
       element.dataset.dragging = "true";
+    };
+    const down = (e) => {
+      if (e.button !== 0 || pointers.size >= 2) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      reset();
       element.setPointerCapture(e.pointerId);
       e.preventDefault();
       const trace = element.querySelector("#graph-trace");
       if (trace) trace.innerHTML = "";
     };
     const move = (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(drag.inverse), v = drag.view, g = drag.geometry;
+      if (!gesture || !pointers.has(e.pointerId)) return;
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      const current2 = [...pointers.values()].slice(0, 2).map((p) => new DOMPoint(p.x, p.y).matrixTransform(gesture.inverse));
       apply(
-        panWindow(
-          v,
-          -(p.x - drag.p.x) * (v.xmax - v.xmin) / g.W,
-          (p.y - drag.p.y) * (v.ymax - v.ymin) / g.H
-        )
+        gestureWindow(gesture.view, gesture.geometry, gesture.positions, current2)
       );
+      e.preventDefault();
     };
     const up = (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const id = drag.id;
-      drag = null;
-      delete element.dataset.dragging;
-      if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+      if (!pointers.delete(e.pointerId)) return;
+      reset();
+      if (element.hasPointerCapture(e.pointerId))
+        element.releasePointerCapture(e.pointerId);
     };
-    element.addEventListener("pointerdown", down);
-    element.addEventListener("pointermove", move);
-    element.addEventListener("pointerup", up);
-    element.addEventListener("pointercancel", up);
-    element.addEventListener("lostpointercapture", up);
+    for (const [type, fn] of [
+      ["pointerdown", down],
+      ["pointermove", move],
+      ["pointerup", up],
+      ["pointercancel", up],
+      ["lostpointercapture", up]
+    ])
+      element.addEventListener(type, fn);
     return () => {
-      element.removeEventListener("pointerdown", down);
-      element.removeEventListener("pointermove", move);
-      element.removeEventListener("pointerup", up);
-      element.removeEventListener("pointercancel", up);
-      element.removeEventListener("lostpointercapture", up);
+      pointers.clear();
+      delete element.dataset.dragging;
+      for (const [type, fn] of [
+        ["pointerdown", down],
+        ["pointermove", move],
+        ["pointerup", up],
+        ["pointercancel", up],
+        ["lostpointercapture", up]
+      ])
+        element.removeEventListener(type, fn);
     };
   }
 
@@ -2218,31 +2490,6 @@
     if (min >= max) throw Error("O in\xEDcio do dom\xEDnio deve ser menor que o fim.");
     return (x) => x < min || x > max ? NaN : fn(x);
   }
-  function algebraDetails(c) {
-    const v = decimal, within = (x) => !c.domain || x >= c.min && x <= c.max;
-    let text = "";
-    if (familyError(c)) return "";
-    if (c.type === "afim") {
-      const root = c.a ? within(-c.b / c.a) ? v(-c.b / c.a) : "fora do intervalo escolhido" : c.b === 0 ? "todo x do dom\xEDnio" : "nenhuma";
-      text = `<p><strong>Inclina\xE7\xE3o:</strong> ${v(c.a)}. <strong>Intercepto:</strong> (0; ${v(c.b)}). <strong>Raiz:</strong> ${root}. ${c.a > 0 ? "Crescente" : c.a < 0 ? "Decrescente" : "Constante"}.</p>`;
-    }
-    if (c.type === "quadratica") {
-      if (!c.a)
-        text = "<p>Com a = 0, a express\xE3o se reduz a uma fun\xE7\xE3o afim ou constante.</p>";
-      else {
-        const D = c.b * c.b - 4 * c.a * c.c, vx = -c.b / (2 * c.a), vy = -D / (4 * c.a), roots = D < 0 ? [] : [
-          (-c.b - Math.sqrt(D)) / (2 * c.a),
-          (-c.b + Math.sqrt(D)) / (2 * c.a)
-        ].filter(within);
-        text = `<p><strong>Discriminante:</strong> \u0394 = b\xB2 \u2212 4ac = ${v(D)}. <strong>Ra\xEDzes no dom\xEDnio:</strong> ${roots.length ? [...new Set(roots.map((x) => v(x)))].join(" e ") : "nenhuma"}.</p><p><strong>V\xE9rtice da par\xE1bola:</strong> (${v(vx)}; ${v(vy)}). Concavidade para ${c.a > 0 ? "cima" : "baixo"}${within(vx) ? "; ponto de " + (c.a > 0 ? "m\xEDnimo" : "m\xE1ximo") : "; v\xE9rtice fora do intervalo escolhido"}.</p>`;
-      }
-    }
-    if (c.type === "exponencial")
-      text = `<p><strong>Intercepto:</strong> (0; ${v(c.a + c.c)}). ${!c.a || c.b === 1 ? "Esta configura\xE7\xE3o produz uma constante." : `Ass\xEDntota horizontal da curva completa: y = ${v(c.c)}. Fun\xE7\xE3o ${c.a * Math.log(c.b) > 0 ? "crescente" : "decrescente"}.`}</p><button id="explore-logistic" class="text-button">Estudar crescimento log\xEDstico \u2192</button>`;
-    if (c.type === "modular")
-      text = `<p><strong>Ponto de mudan\xE7a:</strong> (${v(c.b)}; ${v(c.c)}). ${!c.a ? "Fun\xE7\xE3o constante." : c.a > 0 ? "A curva completa tem m\xEDnimo em x = b." : "A curva completa tem m\xE1ximo em x = b."}</p>`;
-    return text;
-  }
   function mountFunctions(ctx) {
     const { $: $2, select: select2, check: check2, shell: shell2, common: common2, render: render2, state: state2, toast: toast2 } = ctx, s = state2.functions, free = s.mode === "free";
     s.active = 0;
@@ -2260,15 +2507,11 @@
       ).join(
         ""
       )}</div><div class="plot-zoom"><button id="graph-minus" aria-label="Reduzir zoom do gr\xE1fico">\u2212</button><button id="graph-reset" aria-label="Restaurar janela do gr\xE1fico">\u21BA</button><button id="graph-plus" aria-label="Ampliar zoom do gr\xE1fico">+</button></div><div id="color-palette" class="plot-palette" hidden role="group" aria-label="Escolha uma cor">${PALETTE.map(([color, label]) => `<button data-palette-color="${color}" style="--swatch:${color}" aria-label="${label}" title="${label}"><i></i></button>`).join("")}<button id="close-palette" aria-label="Fechar cores">\xD7</button></div></div>
- <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gr\xE1fico de fun\xE7\xF5es"></svg><span class="graph-gesture">Arraste para mover \xB7 Role para dar zoom \xB7 \xCDm\xE3 nas interse\xE7\xF5es</span></div><div class="export-toolbar"><button id="export-svg">\u2193 SVG vetorial</button><button id="export-png">\u2193 PNG</button></div>`,
+ <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gr\xE1fico de fun\xE7\xF5es"></svg><span class="graph-gesture">Arraste para mover \xB7 Role ou fa\xE7a pin\xE7a para dar zoom \xB7 \xCDm\xE3 nas interse\xE7\xF5es</span></div><div class="export-toolbar"><button id="export-svg">\u2193 SVG vetorial</button><button id="export-png">\u2193 PNG</button></div>`,
       nav
     );
     $2(".lab").classList.add("function-lab");
     $2("#lab-controls").classList.add("extended-controls", "function-controls");
-    $2(".workspace").insertAdjacentHTML(
-      "afterend",
-      `<details class="function-notes" ${free ? "hidden" : ""}><summary>Propriedades da fun\xE7\xE3o e tabela de valores</summary><div id="function-details"></div></details>`
-    );
     $2("#mode-families").onclick = () => {
       s.mode = "families";
       render2();
@@ -2292,10 +2535,10 @@
           ["tan", "Tangente"]
         ],
         c.trig
-      ) : ""}<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar fun\xE7\xF5es</button></div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>${specialControls()}<div id="point-list">${pointList()}</div>`;
+      ) : ""}<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check2("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">\u25B6</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar anima\xE7\xF5es</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Dom\xEDnio da fun\xE7\xE3o principal</summary><p id="natural-domain" class="small"></p>${check2("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "In\xEDcio", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras fun\xE7\xF5es</h2><p class="small">Digite at\xE9 5 express\xF5es. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar fun\xE7\xF5es</button></div><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(s)}</details>${axisPositions()}${specialControls()}<div id="point-list">${pointList()}</div>`;
     }
     function assessmentControls() {
-      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select2(
+      return `<div class="control-title">Gr\xE1fico para avalia\xE7\xF5es</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as fun\xE7\xF5es</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para \u03C0. Dom\xEDnio vazio mant\xE9m o dom\xEDnio natural.</p></details><details class="control-section"><summary>Janela do gr\xE1fico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${axisPositions()}${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Autom\xE1tico \xB7 ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select2(
         "tick-mode",
         "Valores nos eixos",
         [
@@ -2317,8 +2560,43 @@
         "intersections"
       )}<button id="find-special" class="wide-button">Localizar na janela atual</button><p class="small">Fixe pontos para inclu\xED-los no SVG e no PNG. As coordenadas fixadas permanecem mesmo ao modificar a fun\xE7\xE3o.</p><div id="special-results" aria-live="polite"></div></details>`;
     }
+    function positionButtons(target, label) {
+      return `<div class="label-position" role="group" aria-label="Posi\xE7\xE3o de ${xml(label)}"><span>${xml(label)}</span><div>${[
+        ["left", "M19 12H5m6-6-6 6 6 6", "esquerda"],
+        ["up", "M12 19V5m-6 6 6-6 6 6", "cima"],
+        ["down", "M12 5v14m-6-6 6 6 6-6", "baixo"],
+        ["right", "M5 12h14m-6-6 6 6-6 6", "direita"],
+        ["reset", "M5 9a7 7 0 1 1 0 6M5 4v5h5", "posi\xE7\xE3o inicial"]
+      ].map(
+        ([dir, icon, text]) => `<button type="button" data-label-target="${target}" data-label-dir="${dir}" aria-label="Mover ${xml(label)} para ${text}" title="${text}"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${icon}"/></svg></button>`
+      ).join("")}</div></div>`;
+    }
+    function axisPositions() {
+      return `<details class="text-positions"><summary>Posi\xE7\xE3o dos nomes dos eixos</summary>${positionButtons("x", "nome do eixo x")}${positionButtons("y", "nome do eixo y")}<p class="small">As setas movem apenas o texto. O bot\xE3o de restaurar retorna \xE0 posi\xE7\xE3o inicial.</p></details>`;
+    }
+    function bindPositions() {
+      document.querySelectorAll("[data-label-target]").forEach(
+        (el) => el.onclick = () => {
+          const target = el.dataset.labelTarget, dir = el.dataset.labelDir;
+          const isPoint = target.startsWith("point-");
+          const obj = isPoint ? pinned[Number(target.slice(6))] : windowState;
+          const prefix = isPoint ? "label" : target + "label";
+          if (!obj) return;
+          for (const [suffix, delta] of [
+            ["Dx", dir === "left" ? -4 : dir === "right" ? 4 : 0],
+            ["Dy", dir === "up" ? -4 : dir === "down" ? 4 : 0]
+          ])
+            obj[prefix + suffix] = dir === "reset" ? 0 : Math.max(
+              -200,
+              Math.min(200, (obj[prefix + suffix] || 0) + delta)
+            );
+          draw();
+        }
+      );
+    }
     function refreshPoints() {
       $2("#point-list").innerHTML = pointList();
+      bindPositions();
       if ($2("#add-point")) $2("#add-point").disabled = pinned.length >= 12;
       document.querySelectorAll("[data-remove-point]").forEach(
         (el) => el.onclick = () => {
@@ -2330,7 +2608,7 @@
     }
     function pointList() {
       return pinned.map(
-        (p, i) => `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">\xD7</button></div>`
+        (p, i) => `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">\xD7</button></div>${positionButtons("point-" + i, "texto de " + (p.label || "P" + (i + 1)))}`
       ).join("");
     }
     function compileRows() {
@@ -2438,9 +2716,6 @@
         if (c.type === "trigonometrica" && c.trig !== "tan")
           summary += ` \xB7 Amplitude = |b| = ${decimal(Math.abs(c.b))}`;
         $2("#graph-summary").innerHTML = c.type === "trigonometrica" ? trigSummaryMathML(c) : xml(summary);
-        $2("#function-details").innerHTML = `<p>Dom\xEDnio: ${xml(naturalDomain(c))}${c.domain ? ` \u2229 [${decimal(c.min)}; ${decimal(c.max)}]` : ""}.</p>${algebraDetails(c)}${c.type === "logistica" ? "<p>Crescimento log\xEDstico: para b \u2260 0, os patamares da curva completa s\xE3o y = d e y = a + d.</p>" : ""}${c.type === "trigonometrica" ? "<p>As linhas tracejadas mostram os extremos no dom\xEDnio escolhido (seno e cosseno) ou as ass\xEDntotas (tangente). Os \xE2ngulos est\xE3o em radianos.</p>" : ""}<div class="table-scroll"><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${decimal(familyValue(c, x))}</td>`).join("")}</tr></tbody></table></div>`;
-        if ($2("#explore-logistic"))
-          $2("#explore-logistic").onclick = () => changeFamily("logistica");
       }
       drawGraph($2("#function-graph"), options);
       $2("#function-graph").setAttribute(
@@ -2459,8 +2734,8 @@
       for (const k of ["xmin", "xmax", "ymin", "ymax"])
         $2("#window-" + k).value = decimal(windowState[k], 5);
     }
-    function setWindow(v) {
-      Object.assign(windowState, v);
+    function setWindow(v2) {
+      Object.assign(windowState, v2);
       syncWindow();
       draw();
     }
@@ -2470,18 +2745,18 @@
     }
     $2("#apply-window").onclick = () => {
       try {
-        const v = {};
+        const v2 = {};
         for (const k of ["xmin", "xmax", "ymin", "ymax"]) {
-          v[k] = finiteInput($2("#window-" + k).value);
-          if (Math.abs(v[k]) > 1e4)
+          v2[k] = finiteInput($2("#window-" + k).value);
+          if (Math.abs(v2[k]) > 1e4)
             throw Error("Use valores entre \u221210.000 e 10.000.");
         }
-        if (v.xmax - v.xmin < 1e-4 || v.ymax - v.ymin < 1e-4)
+        if (v2.xmax - v2.xmin < 1e-4 || v2.ymax - v2.ymin < 1e-4)
           throw Error(
             "Use m\xEDnimos menores que os m\xE1ximos, com intervalo de pelo menos 0,0001."
           );
         $2("#window-error").textContent = "";
-        setWindow(v);
+        setWindow(v2);
       } catch (e) {
         $2("#window-error").textContent = e.message;
       }
@@ -2509,15 +2784,23 @@
         q.expression = e.target.value;
         draw();
       };
+      $2("#expression-" + i).onkeydown = (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        q.expression = e.target.value;
+        draw();
+        if (!$2("#expression-error-" + i).textContent && q.expression.trim())
+          toast2("Fun\xE7\xE3o aplicada ao gr\xE1fico.");
+      };
       $2("#visible-" + i).onchange = (e) => {
         q.visible = e.target.checked;
         draw();
       };
       if (free) {
         $2("#stroke-" + i).oninput = (e) => {
-          const v = e.target.valueAsNumber;
-          if (Number.isFinite(v) && v >= 0.25 && v <= 6) {
-            q.strokeWidth = v;
+          const v2 = e.target.valueAsNumber;
+          if (Number.isFinite(v2) && v2 >= 0.25 && v2 <= 6) {
+            q.strokeWidth = v2;
             e.target.setCustomValidity("");
             draw();
           } else e.target.setCustomValidity("Use de 0,25 a 6 pt.");
@@ -2588,9 +2871,9 @@
           try {
             const value = el.value.trim();
             if (value) {
-              const n = finiteInput(value);
-              if (n <= 0) throw Error("O passo deve ser positivo.");
-              if ((f[k + "max"] - f[k + "min"]) / n > 200)
+              const n2 = finiteInput(value);
+              if (n2 <= 0) throw Error("O passo deve ser positivo.");
+              if ((f[k + "max"] - f[k + "min"]) / n2 > 200)
                 throw Error(
                   "Use um passo maior: no m\xE1ximo 200 intervalos por eixo."
                 );
@@ -2691,12 +2974,12 @@
           }
         };
       for (const [k, , min, max] of PARAMS[c.type]) {
-        const update = (v, write = true) => {
-          c[k] = v;
-          $2("#coef-" + k).min = Math.min(min, v);
-          $2("#coef-" + k).max = Math.max(max, v);
-          $2("#coef-" + k).value = v;
-          if (write) $2("#value-" + k).value = Number(v.toFixed(4));
+        const update = (v2, write = true) => {
+          c[k] = v2;
+          $2("#coef-" + k).min = Math.min(min, v2);
+          $2("#coef-" + k).max = Math.max(max, v2);
+          $2("#coef-" + k).value = v2;
+          if (write) $2("#value-" + k).value = Number(v2.toFixed(4));
           draw();
         };
         $2("#coef-" + k).oninput = (e) => {
@@ -2704,10 +2987,10 @@
           update(+e.target.value);
         };
         $2("#value-" + k).oninput = (e) => {
-          const v = e.target.valueAsNumber;
-          if (Number.isFinite(v) && Math.abs(v) <= 1e3) {
+          const v2 = e.target.valueAsNumber;
+          if (Number.isFinite(v2) && Math.abs(v2) <= 1e3) {
             stop(k);
-            update(v, false);
+            update(v2, false);
             e.target.setCustomValidity("");
           } else e.target.setCustomValidity("Use um valor entre \u22121.000 e 1.000.");
         };
@@ -2752,18 +3035,18 @@
       if (t - previous >= 50) {
         previous = t;
         for (const [k, p] of playing) {
-          let v = c[k] + p.direction * (p.max - p.min) * dt / 9;
-          if (v > p.max) {
-            v = p.max;
+          let v2 = c[k] + p.direction * (p.max - p.min) * dt / 9;
+          if (v2 > p.max) {
+            v2 = p.max;
             p.direction = -1;
           }
-          if (v < p.min) {
-            v = p.min;
+          if (v2 < p.min) {
+            v2 = p.min;
             p.direction = 1;
           }
-          c[k] = v;
-          $2("#coef-" + k).value = v;
-          $2("#value-" + k).value = Number(v.toFixed(3));
+          c[k] = v2;
+          $2("#coef-" + k).value = v2;
+          $2("#value-" + k).value = Number(v2.toFixed(3));
         }
         draw();
       }
@@ -2849,8 +3132,8 @@
 
   // assets/app.js
   var $ = (s) => document.querySelector(s);
-  var fmt = (n, d = 2) => n === null || !Number.isFinite(n) ? "\u2014" : n.toLocaleString("pt-BR", { maximumFractionDigits: d });
-  var pct = (n) => n === null ? "indefinida" : fmt(n * 100, 1) + "%";
+  var fmt = (n2, d = 2) => n2 === null || !Number.isFinite(n2) ? "\u2014" : n2.toLocaleString("pt-BR", { maximumFractionDigits: d });
+  var pct = (n2) => n2 === null ? "indefinida" : fmt(n2 * 100, 1) + "%";
   var esc = (s) => String(s).replace(
     /[&<>"']/g,
     (c) => ({
@@ -2920,11 +3203,11 @@
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => $("#toast").style.display = "none", 4e3);
   }
-  function range(id, label, v, min, max, step = 1, suffix = "") {
-    return `<label class="field" for="${id}"><span>${label}<output id="${id}-out">${fmt(v)}${suffix}</output></span><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v}"></label>`;
+  function range(id, label, v2, min, max, step = 1, suffix = "") {
+    return `<label class="field" for="${id}"><span>${label}<output id="${id}-out">${fmt(v2)}${suffix}</output></span><input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${v2}"></label>`;
   }
   function select(id, label, options, value) {
-    return `<label class="field" for="${id}"><span>${label}</span><select id="${id}">${options.map(([v, l]) => `<option value="${v}" ${v === value ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
+    return `<label class="field" for="${id}"><span>${label}</span><select id="${id}">${options.map(([v2, l]) => `<option value="${v2}" ${v2 === value ? "selected" : ""}>${l}</option>`).join("")}</select></label>`;
   }
   function check(id, label, value) {
     return `<label class="check"><input type="checkbox" id="${id}" ${value ? "checked" : ""}>${label}</label>`;
@@ -3023,6 +3306,13 @@
           "Dobrar o raio quadruplica a \xE1rea e multiplica o volume por 8. A superf\xEDcie esf\xE9rica n\xE3o pode ser planificada sem deforma\xE7\xE3o."
         ]
       };
+      if (state.geometry.frustum && ["cone", "piramide"].includes(type))
+        lessons[type] = [
+          "Um tronco como diferen\xE7a de s\xF3lidos",
+          "Se a medida da base menor for metade da maior, a parte retirada tem metade do volume do s\xF3lido original?",
+          "Configure a base maior com medida 4, a menor com medida 2 e a altura do tronco igual a 6. Reconstrua no papel o v\xE9rtice retirado e identifique os s\xF3lidos semelhantes.",
+          "A raz\xE3o entre comprimentos \xE9 1/2; entre \xE1reas, 1/4; entre volumes, 1/8. Neste exemplo, o s\xF3lido original tem altura 12 e a parte retirada, 6. O tronco conserva 7/8 do volume original. Sua altura n\xE3o \xE9 a altura do s\xF3lido original."
+        ];
       const [title, question, experiment, answer] = lessons[type];
       return {
         ...base,
@@ -3212,9 +3502,9 @@
         toast("O limite \xE9 500 valores.");
         return;
       }
-      let max = Math.max(...data), min = Math.min(...data), v = Math.min(1e9, max + Math.max(1, max - min) * 5);
-      data.push(v);
-      s.text = data.map((n) => String(n).replace(".", ",")).join("; ");
+      let max = Math.max(...data), min = Math.min(...data), v2 = Math.min(1e9, max + Math.max(1, max - min) * 5);
+      data.push(v2);
+      s.text = data.map((n2) => String(n2).replace(".", ",")).join("; ");
       $("#data").value = s.text;
       drawStats();
     };
@@ -3249,24 +3539,24 @@
         label: fmt(m.min + i * w) + " a " + fmt(m.min + (i + 1) * w)
       }));
       values.forEach(
-        (v) => bins[Math.min(count - 1, Math.floor((v - m.min) / w))].n++
+        (v2) => bins[Math.min(count - 1, Math.floor((v2 - m.min) / w))].n++
       );
-    } else bins = entries.map(([x, n]) => ({ x, n, label: fmt(x) }));
+    } else bins = entries.map(([x, n2]) => ({ x, n: n2, label: fmt(x) }));
     let span = m.max - m.min || 2, lo = m.min - span * 0.1, hi = m.max + span * 0.1, X = (x) => 70 + (x - lo) / (hi - lo) * 660, peak = Math.max(...bins.map((b) => b.n)), V = (y) => 340 - y / peak * 265, width = binned ? 660 / bins.length * 0.8 : Math.min(
       45,
       ...bins.slice(1).map((b, i) => (X(b.x) - X(bins[i].x)) * 0.75)
     );
     let html = '<text x="70" y="27" class="plot-label">Frequ\xEAncia</text>';
     for (let i = 0; i <= 4; i++) {
-      let n = peak * i / 4;
-      html += `<path d="M70 ${V(n)}H740" stroke="#e0e6dc"/><text x="57" y="${V(n) + 4}" text-anchor="end" class="plot-label">${fmt(n, 1)}</text>`;
+      let n2 = peak * i / 4;
+      html += `<path d="M70 ${V(n2)}H740" stroke="#e0e6dc"/><text x="57" y="${V(n2) + 4}" text-anchor="end" class="plot-label">${fmt(n2, 1)}</text>`;
     }
     bins.forEach(
       (b, i) => html += `<rect x="${X(b.x) - width / 2}" y="${V(b.n)}" width="${width}" height="${340 - V(b.n)}" rx="4" fill="#94b57f"><title>${esc(b.label)}: ${b.n}</title></rect><text x="${X(b.x)}" y="${V(b.n) - 9}" text-anchor="middle" class="plot-value">${b.n}</text>${bins.length <= 12 || i % 2 === 0 ? `<text x="${X(b.x)}" y="364" text-anchor="middle" class="plot-label">${fmt(b.x, 1)}</text>` : ""}`
     );
     html += `<path d="M${X(m.mean)} 45V341" stroke="#7557a4" stroke-width="2" stroke-dasharray="6 5"/><text x="${Math.max(90, Math.min(680, X(m.mean) + 8))}" y="48" fill="#7557a4" font-family="sans-serif" font-size="12">M\xE9dia ${fmt(m.mean)}</text><text x="400" y="400" text-anchor="middle" class="plot-label">${binned ? "Valores agrupados em 12 intervalos (r\xF3tulos nos centros)" : "Valor observado"}</text>`;
     $("#stats-plot").innerHTML = html;
-    $("#stats-table").innerHTML = `<p class="small">${m.sorted.map((x) => fmt(x)).join(" \xB7 ")}</p><table class="data-table"><thead><tr><th>Valor</th><th>Frequ\xEAncia</th><th>Frequ\xEAncia relativa</th></tr></thead><tbody>${entries.map(([v, n]) => `<tr><td>${fmt(v)}</td><td>${n}</td><td>${pct(n / m.n)}</td></tr>`).join("")}</tbody></table>`;
+    $("#stats-table").innerHTML = `<p class="small">${m.sorted.map((x) => fmt(x)).join(" \xB7 ")}</p><table class="data-table"><thead><tr><th>Valor</th><th>Frequ\xEAncia</th><th>Frequ\xEAncia relativa</th></tr></thead><tbody>${entries.map(([v2, n2]) => `<tr><td>${fmt(v2)}</td><td>${n2}</td><td>${pct(n2 / m.n)}</td></tr>`).join("")}</tbody></table>`;
   }
   function probabilityLab() {
     const tabs = [
@@ -3342,10 +3632,10 @@
     crypto.getRandomValues(a);
     return a[0] / 4294967296;
   }
-  function roll(n) {
+  function roll(n2) {
     const s = state.prob;
     let last;
-    for (let i = 0; i < n; i++) {
+    for (let i = 0; i < n2; i++) {
       last = s.mode === "moeda" ? random() < s.p ? 0 : 1 : s.mode === "dado" ? Math.floor(random() * 6) : Math.floor(random() * 6) + Math.floor(random() * 6);
       s.counts[last]++;
     }
@@ -3356,17 +3646,17 @@
     const s = state.prob, total = s.counts.reduce((a, b) => a + b, 0), theory = s.mode === "moeda" ? [s.p, 1 - s.p] : s.mode === "dado" ? Array(6).fill(1 / 6) : Array.from({ length: 11 }, (_, i) => (6 - Math.abs(i - 5)) / 36), labels = s.mode === "moeda" ? ["Cara", "Coroa"] : s.mode === "dado" ? ["1", "2", "3", "4", "5", "6"] : Array.from({ length: 11 }, (_, i) => String(i + 2)), peak = Math.max(
       0.2,
       ...theory,
-      ...s.counts.map((n) => total ? n / total : 0)
-    ) * 1.2, Y = (v) => 300 - v / peak * 240;
+      ...s.counts.map((n2) => total ? n2 / total : 0)
+    ) * 1.2, Y = (v2) => 300 - v2 / peak * 240;
     let html = "";
     for (let i = 0; i <= 4; i++) {
-      let v = peak * i / 4;
-      html += `<path d="M70 ${Y(v)}H740" stroke="#e0e6dc"/><text x="58" y="${Y(v) + 4}" text-anchor="end" class="plot-label">${pct(v)}</text>`;
+      let v2 = peak * i / 4;
+      html += `<path d="M70 ${Y(v2)}H740" stroke="#e0e6dc"/><text x="58" y="${Y(v2) + 4}" text-anchor="end" class="plot-label">${pct(v2)}</text>`;
     }
     const step = 650 / s.counts.length;
     labels.forEach((l, i) => {
-      let x = 80 + step * (i + 0.5), width = Math.min(90, step * 0.6), v = total ? s.counts[i] / total : 0;
-      html += `<rect x="${x - width / 2}" y="${Y(v)}" width="${width}" height="${300 - Y(v)}" fill="${i === s.event ? "#316449" : "#a8c299"}" rx="4"/><path d="M${x - width / 2 - 5} ${Y(theory[i])}h${width + 10}" stroke="#7557a4" stroke-width="3"/><text x="${x}" y="325" text-anchor="middle" class="plot-label">${l}</text>${total ? `<text x="${x}" y="${Y(v) - 12}" text-anchor="middle" class="plot-value">${pct(v)}</text>` : ""}`;
+      let x = 80 + step * (i + 0.5), width = Math.min(90, step * 0.6), v2 = total ? s.counts[i] / total : 0;
+      html += `<rect x="${x - width / 2}" y="${Y(v2)}" width="${width}" height="${300 - Y(v2)}" fill="${i === s.event ? "#316449" : "#a8c299"}" rx="4"/><path d="M${x - width / 2 - 5} ${Y(theory[i])}h${width + 10}" stroke="#7557a4" stroke-width="3"/><text x="${x}" y="325" text-anchor="middle" class="plot-label">${l}</text>${total ? `<text x="${x}" y="${Y(v2) - 12}" text-anchor="middle" class="plot-value">${pct(v2)}</text>` : ""}`;
     });
     if (!total)
       html += '<text x="400" y="170" text-anchor="middle" class="plot-title">O que voc\xEA espera encontrar?</text><text x="400" y="195" text-anchor="middle" class="plot-label">Fa\xE7a o primeiro lan\xE7amento para come\xE7ar.</text>';
@@ -3398,12 +3688,12 @@
     );
     ["a", "b", "c", "d"].forEach(
       (k) => $("#group-" + k).oninput = (e) => {
-        let v = +e.target.value;
-        if (e.target.value === "" || !Number.isInteger(v) || v < 0 || v > 1e3) {
+        let v2 = +e.target.value;
+        if (e.target.value === "" || !Number.isInteger(v2) || v2 < 0 || v2 > 1e3) {
           $("#conditional-error").textContent = "Use contagens inteiras entre 0 e 1.000.";
           return;
         }
-        s[k] = v;
+        s[k] = v2;
         $("#conditional-error").textContent = "";
         drawConditional();
       }
@@ -3427,7 +3717,7 @@
       ["Nem A nem B", s.d, false, 410, 225]
     ];
     $("#conditional-plot").innerHTML = cells.map(
-      ([l, v, on, x, y], i) => `<rect x="${x}" y="${y}" width="308" height="132" rx="12" fill="${i === 0 ? "#316449" : on ? "#dce8ce" : "#eef0e9"}" stroke="${on ? "#688561" : "#e0e6dc"}" stroke-width="${on ? 2 : 1}"/><text x="${x + 22}" y="${y + 33}" fill="${i === 0 ? "#fff" : "#4e6654"}" font-size="13" font-family="sans-serif">${l}${on ? " \xB7 condi\xE7\xE3o" : ""}</text><text x="${x + 22}" y="${y + 91}" fill="${i === 0 ? "#fff" : "#4e6654"}" font-size="37" font-family="sans-serif">${v}</text>`
+      ([l, v2, on, x, y], i) => `<rect x="${x}" y="${y}" width="308" height="132" rx="12" fill="${i === 0 ? "#316449" : on ? "#dce8ce" : "#eef0e9"}" stroke="${on ? "#688561" : "#e0e6dc"}" stroke-width="${on ? 2 : 1}"/><text x="${x + 22}" y="${y + 33}" fill="${i === 0 ? "#fff" : "#4e6654"}" font-size="13" font-family="sans-serif">${l}${on ? " \xB7 condi\xE7\xE3o" : ""}</text><text x="${x + 22}" y="${y + 91}" fill="${i === 0 ? "#fff" : "#4e6654"}" font-size="37" font-family="sans-serif">${v2}</text>`
     ).join("") + '<text x="400" y="389" text-anchor="middle" class="plot-label">Regi\xF5es esquem\xE1ticas: \xE1reas dos ret\xE2ngulos n\xE3o representam propor\xE7\xF5es.</text>';
     $("#conditional-result").innerHTML = `<span class="big">${pct(value)}</span><div><strong>${formula} = ${s.a} / ${den}</strong><p>${den ? "Ocorr\xEAncias na interse\xE7\xE3o \xF7 total da condi\xE7\xE3o." : "Condi\xE7\xE3o vazia: divis\xE3o por zero, probabilidade indefinida."}</p></div>`;
     $("#conditional-metrics").innerHTML = metric("Total da turma", m.total) + metric("P(A)", pct(m.pa)) + metric("P(B)", pct(m.pb));
@@ -3471,7 +3761,7 @@
     const s = state.binomial, probs = binomial(s.n, s.p);
     $("#bin-title").textContent = s.tab === "pascal" ? "Tri\xE2ngulo de Pascal \xB7 linha " + s.n : "Distribui\xE7\xE3o binomial";
     if (s.tab === "pascal") {
-      $("#bin-stage").innerHTML = `<div class="pascal" role="img" aria-label="Tri\xE2ngulo de Pascal, linha ${s.n}: ${Array.from({ length: s.n + 1 }, (_, k) => choose(s.n, k)).join(", ")}">${Array.from({ length: 11 }, (_, n) => `<div class="pascal-row ${n === s.n ? "current" : ""}"><span class="small" style="width:29px;padding-top:6px">${n}</span>${Array.from({ length: n + 1 }, (_2, k) => `<span class="pascal-cell" title="C(${n},${k}) = ${choose(n, k)}">${choose(n, k)}</span>`).join("")}</div>`).join("")}</div>`;
+      $("#bin-stage").innerHTML = `<div class="pascal" role="img" aria-label="Tri\xE2ngulo de Pascal, linha ${s.n}: ${Array.from({ length: s.n + 1 }, (_, k) => choose(s.n, k)).join(", ")}">${Array.from({ length: 11 }, (_, n2) => `<div class="pascal-row ${n2 === s.n ? "current" : ""}"><span class="small" style="width:29px;padding-top:6px">${n2}</span>${Array.from({ length: n2 + 1 }, (_2, k) => `<span class="pascal-cell" title="C(${n2},${k}) = ${choose(n2, k)}">${choose(n2, k)}</span>`).join("")}</div>`).join("")}</div>`;
     } else {
       let max = Math.max(...probs), step = 650 / (s.n + 1);
       $("#bin-stage").innerHTML = `<svg viewBox="0 0 800 400" role="img" aria-label="Probabilidades para cada quantidade de sucessos"><path d="M65 330H745" stroke="#8b9b87"/>${probs.map((p, k) => {
@@ -3481,7 +3771,7 @@
         ""
       )}<text x="400" y="390" text-anchor="middle" class="plot-label">N\xFAmero de sucessos (k)</text></svg>`;
     }
-    const sup = (n) => n === 1 ? "" : `<sup>${n}</sup>`, terms = Array.from({ length: s.n + 1 }, (_, k) => {
+    const sup = (n2) => n2 === 1 ? "" : `<sup>${n2}</sup>`, terms = Array.from({ length: s.n + 1 }, (_, k) => {
       let c = choose(s.n, k), term = (s.n - k ? "a" + sup(s.n - k) : "") + (k ? "b" + sup(k) : "");
       return (c === 1 && term ? "" : c) + term;
     });
@@ -3515,7 +3805,7 @@
           "Conecte a visualiza\xE7\xE3o, os n\xFAmeros e a express\xE3o matem\xE1tica. Teste tamb\xE9m casos extremos."
         ]
       ].map(
-        ([n, t, p]) => `<div class="guide-step"><b>${n}</b><div><strong>${t}</strong><p>${p}</p></div></div>`
+        ([n2, t, p]) => `<div class="guide-step"><b>${n2}</b><div><strong>${t}</strong><p>${p}</p></div></div>`
       ).join(
         ""
       )}<p><strong>Na sala:</strong> use \u201CApresentar\u201D para ampliar a bancada, \u201CRoteiro de aula\u201D para orientar a investiga\xE7\xE3o e \u201CCompartilhar\u201D para abrir a mesma configura\xE7\xE3o em outro dispositivo. Os dados ficam nesta aba; baixar ou compartilhar \xE9 uma a\xE7\xE3o sua.</p><p><strong>Acessibilidade:</strong> controles por teclado, tabelas alternativas aos gr\xE1ficos e modo de impress\xE3o. Use as setas do teclado no s\xF3lido para girar.</p>`

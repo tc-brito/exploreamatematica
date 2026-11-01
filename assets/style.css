@@ -2482,3 +2482,73 @@ body.presenting .function-lab .function-notes {
 .special-result:disabled {
   opacity: 0.65;
 }
+
+.label-position {
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.label-position > span {
+  max-width: 45%;
+  overflow-wrap: anywhere;
+}
+.label-position > div {
+  display: flex;
+  gap: 3px;
+}
+.label-position button {
+  min-width: 30px;
+  min-height: 32px;
+  padding: 3px 6px;
+  font-size: 17px;
+}
+.text-positions {
+  margin: 10px 0;
+}
+.text-positions summary {
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.solid-math {
+  display: grid;
+  gap: 16px;
+  justify-items: start;
+}
+.solid-math math {
+  font-size: 26px;
+  margin: 0;
+}
+.formula-panel .solid-math + p {
+  margin-top: 18px;
+}
+
+.label-position button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.solid-math {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+@media (max-width: 600px) {
+  .label-position {
+    flex-wrap: wrap;
+  }
+  .label-position > span {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+  .label-position button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .solid-math math {
+    font-size: 21px;
+  }
+}

@@ -1,6 +1,10 @@
+import { geometryFormula } from "./solid-formulas.js";
 import { solidMetrics } from "./math.js";
 import {
   SOLID_NAMES,
+  isFrustum,
+  frustumMetrics,
+  frustumNet,
   CAMERA_VIEWS,
   cameraAngles,
   FACE_COLORS,
@@ -33,8 +37,21 @@ export function mountGeometry(ctx) {
     } = ctx,
     s = state.geometry,
     curved = ["cilindro", "cone", "esfera"].includes(s.type),
-    normal = s.view === "solid";
-  let controls = `<div class="control-title">Seu sólido <span>◇</span></div>${select("shape", "Escolha o sólido", Object.entries(SOLID_NAMES), s.type)}${select("camera-view", "Vista do sólido", [...Object.entries(CAMERA_VIEWS).map(([key, v]) => [key, v.label]), ["custom", "Rotação livre"]], s.camera)}<div class="control-section"><h2>Dimensões · unidades de comprimento</h2>${range("dim-a", curved ? "Raio (r)" : s.type === "cubo" ? "Aresta (a)" : "Lado da base (a)", s.a, 0.5, 10, 0.1)}${!["cubo", "esfera"].includes(s.type) ? range("dim-h", "Altura (h)", s.h, 0.5, 12, 0.1) : ""}${s.type === "prisma" ? range("dim-b", "Largura da base (b)", s.b, 0.5, 10, 0.1) : ""}</div><div class="control-section"><h2>Explore a estrutura</h2><div class="segmented">${[["solid", "Sólido 3D"], ["net", "Planificação"], ["exploded", "Vista explodida"], ...(curved ? [["revolution", "Revolução"]] : [])].map(([v, l]) => `<button data-view="${v}" aria-pressed="${s.view === v}" ${s.type === "esfera" && ["net", "exploded"].includes(v) ? 'disabled title="A esfera não tem planificação plana exata"' : ""} class="${s.view === v ? "selected" : ""}">${l}</button>`).join("")}</div>${s.view === "net" ? `<div class="dynamic-control">${range("opening", "Abertura da planificação", s.opening, 0, 100, 1, "%")}<div class="range-ends"><span>Fechado</span><span>Aberto</span></div><p class="small">Arraste o controle para abrir e fechar o sólido. As dimensões das faces são preservadas.</p></div>` : ""}${s.type === "esfera" ? '<p class="small">A esfera não admite planificação exata sem deformação.</p>' : ""}</div>`;
+    normal = s.view === "solid",
+    truncated = isFrustum(s);
+  let controls = `<div class="control-title">Seu sólido <span>◇</span></div>${select("shape", "Escolha o sólido", Object.entries(SOLID_NAMES), s.type)}${
+    ["cone", "piramide"].includes(s.type)
+      ? select(
+          "solid-part",
+          "Objeto de estudo",
+          [
+            ["whole", "Sólido completo"],
+            ["frustum", "Tronco"],
+          ],
+          truncated ? "frustum" : "whole",
+        )
+      : ""
+  }${select("camera-view", "Vista do sólido", [...Object.entries(CAMERA_VIEWS).map(([key, v]) => [key, v.label]), ["custom", "Rotação livre"]], s.camera)}<div class="control-section"><h2>Dimensões · unidades de comprimento</h2>${range("dim-a", curved ? (truncated ? "Raio da base maior (R)" : "Raio (r)") : s.type === "cubo" ? "Aresta (a)" : "Lado da base (a)", s.a, 0.5, 20, 0.1)}${!["cubo", "esfera"].includes(s.type) ? range("dim-h", "Altura (h)", s.h, 0.5, 20, 0.1) : ""}${truncated ? range("dim-top", s.type === "cone" ? "Raio da base menor (r)" : "Lado da base menor (b)", s.top, 0.1, s.a, 0.1) : ""}${s.type === "prisma" ? range("dim-b", "Largura da base (b)", s.b, 0.5, 20, 0.1) : ""}</div><div class="control-section"><h2>Explore a estrutura</h2><div class="segmented">${[["solid", "Sólido 3D"], ["net", "Planificação"], ["exploded", "Vista explodida"], ...(curved ? [["revolution", "Revolução"]] : [])].map(([v, l]) => `<button data-view="${v}" aria-pressed="${s.view === v}" ${s.type === "esfera" && ["net", "exploded"].includes(v) ? 'disabled title="A esfera não tem planificação plana exata"' : ""} class="${s.view === v ? "selected" : ""}">${l}</button>`).join("")}</div>${s.view === "net" ? `<div class="dynamic-control">${range("opening", "Abertura da planificação", s.opening, 0, 100, 1, "%")}<div class="range-ends"><span>Fechado</span><span>Aberto</span></div><p class="small">Arraste o controle para abrir e fechar o sólido. As dimensões das faces são preservadas.</p></div>` : ""}${s.type === "esfera" ? '<p class="small">A esfera não admite planificação exata sem deformação.</p>' : ""}</div>`;
   if (s.view === "revolution")
     controls += `<div class="control-section"><h2>Gerar por revolução</h2>${select(
       "rotation-axis",
@@ -44,7 +61,7 @@ export function mountGeometry(ctx) {
         ["x", "Eixo x"],
       ],
       s.axis,
-    )}${range("sweep", "Ângulo de rotação", s.revolution, 0, 360, 1, "°")}<div class="inline-actions"><button id="sweep-zero">Figura plana</button><button id="sweep-full">Volta completa</button></div><p class="small">${s.type === "cilindro" ? "Um retângulo gira em torno de um de seus lados." : s.type === "cone" ? "Um triângulo retângulo gira em torno de um de seus catetos." : "Um semicírculo gira em torno de seu diâmetro."} A figura geradora aparece em laranja.</p></div>`;
+    )}${range("sweep", "Ângulo de rotação", s.revolution, 0, 360, 1, "°")}<div class="inline-actions"><button id="sweep-zero">Figura plana</button><button id="sweep-full">Volta completa</button></div><p class="small">${s.type === "cilindro" ? "Um retângulo gira em torno de um de seus lados." : s.type === "cone" ? (truncated ? "Um trapézio retângulo gira em torno do lado perpendicular às bases." : "Um triângulo retângulo gira em torno de um de seus catetos.") : "Um semicírculo gira em torno de seu diâmetro."} A figura geradora aparece em laranja.</p></div>`;
   if (s.type === "esfera" && normal)
     controls += `<div class="control-section"><h2>Partes da esfera</h2>${select(
       "sphere-part",
@@ -58,7 +75,7 @@ export function mountGeometry(ctx) {
     )}${s.part === "cap" ? range("cap-height", "Altura da calota (h)", s.capHeight, 0.05, 2 * s.a, 0.05) : s.part === "wedge" ? range("wedge-angle", "Ângulo da cunha (θ)", s.wedge, 1, 360, 1, "°") : ""}</div>`;
   controls += `<div class="control-section"><h2>Elementos visíveis</h2>${check("faces", curved ? "Superfícies" : "Faces", s.faces)}${!curved ? check("edges", "Arestas", s.edges) + check("vertices", "Vértices", s.vertices) : ""}${normal ? check("measure", "Medidas", s.measure) : ""}${normal && ["cone", "cilindro", "piramide"].includes(s.type) ? check("guide", s.type === "piramide" ? "Apótema lateral (ℓ)" : "Geratriz (g)", s.guide) : ""}</div>`;
   if (s.type === "piramide" && normal)
-    controls += `<div class="control-section"><h2>Construções auxiliares</h2>${check("diagonal", "Diagonal da base", s.diagonal)}${check("triangleApothem", "Triângulo do apótema lateral", s.triangleApothem)}${check("triangleEdge", "Triângulo da aresta lateral", s.triangleEdge)}<p class="small">Os dois triângulos têm ângulo reto no centro da base.</p></div>`;
+    controls += `<div class="control-section"><h2>Construções auxiliares</h2>${check("diagonal", "Diagonal da base", s.diagonal)}${!truncated ? check("triangleApothem", "Triângulo do apótema lateral", s.triangleApothem) : ""}${!truncated ? check("triangleEdge", "Triângulo da aresta lateral", s.triangleEdge) : ""}${!truncated ? '<p class="small">Os dois triângulos têm ângulo reto no centro da base.</p>' : '<p class="small">As bases são quadrados paralelos e semelhantes.</p>'}</div>`;
   $("#main").innerHTML = shell(
     "Geometria espacial",
     "Abra, construa e investigue os sólidos em movimento.",
@@ -100,8 +117,21 @@ export function mountGeometry(ctx) {
     s.capHeight = Math.min(s.capHeight, 2 * s.a);
     render();
   };
+  if ($("#solid-part"))
+    $("#solid-part").onchange = (e) => {
+      s.frustum = e.target.value === "frustum";
+      s.top = Math.min(s.top, s.a);
+      render();
+    };
+  bind("dim-top", "top");
   bind("dim-a", "a", "", () => {
     s.capHeight = Math.min(s.capHeight, 2 * s.a);
+    s.top = Math.min(s.top, s.a);
+    if ($("#dim-top")) {
+      $("#dim-top").max = s.a;
+      $("#dim-top").value = s.top;
+      $("#dim-top-out").textContent = fmt(s.top);
+    }
     if ($("#cap-height")) {
       $("#cap-height").max = 2 * s.a;
       $("#cap-height").value = s.capHeight;
@@ -216,11 +246,15 @@ export function mountGeometry(ctx) {
     draw();
   };
   function draw() {
-    const m = solidMetrics(s.type, s.a, s.h, s.b),
+    const m = truncated
+        ? frustumMetrics(s.type, s.a, s.top, s.h)
+        : solidMetrics(s.type, s.a, s.h, s.b),
       cap = capMetrics(s.a, s.capHeight),
       wedge = wedgeMetrics(s.a, s.wedge);
     $("#solid-name").textContent =
-      SOLID_NAMES[s.type] +
+      (truncated
+        ? "Tronco de " + SOLID_NAMES[s.type].toLowerCase()
+        : SOLID_NAMES[s.type]) +
       (s.type === "esfera" && normal && s.part !== "whole"
         ? " · " + (s.part === "cap" ? "calota" : "cunha")
         : "");
@@ -235,7 +269,7 @@ export function mountGeometry(ctx) {
     const viewName = CAMERA_VIEWS[s.camera]?.label || "Rotação livre";
     $("#view-label").textContent =
       viewName + " · " + $("#view-label").textContent;
-    let detail = `<span class="formula">A = ${m.formulaA} &nbsp; · &nbsp; V = ${m.formulaV}</span><p>u.a.: unidades de área · u.v.: unidades de volume.</p>`;
+    let detail = geometryFormula(s);
     if (s.view === "revolution") {
       $("#solid-metrics").innerHTML =
         metric("Área do sólido completo", fmt(m.area) + " u.a.") +
@@ -258,7 +292,7 @@ export function mountGeometry(ctx) {
           "πh²(r − h/3)",
         ) +
         metric("Área da base circular", fmt(cap.base) + " u.a.", "π(2rh − h²)");
-      detail = `<span class="formula">A<sub>calota</sub> = 2πrh &nbsp; · &nbsp; V = πh²(r − h/3)</span><p>Altura h = ${fmt(s.capHeight)}; raio da base ρ = √(2rh − h²) = ${fmt(cap.baseRadius)}. Área total do segmento fechado: ${fmt(cap.total)} u.a. A calota é a superfície curva; o volume corresponde ao segmento esférico.</p>`;
+      detail += `<p>Altura h = ${fmt(s.capHeight)}; raio da base ρ = √(2rh − h²) = ${fmt(cap.baseRadius)}. Área total do segmento fechado: ${fmt(cap.total)} u.a. A calota é a superfície curva; o volume corresponde ao segmento esférico.</p>`;
     } else if (s.type === "esfera" && s.part === "wedge") {
       $("#solid-metrics").innerHTML =
         metric("Área curva do fuso", fmt(wedge.curved) + " u.a.") +
@@ -268,7 +302,7 @@ export function mountGeometry(ctx) {
           fmt(wedge.total) + " u.a.",
           "Inclui os cortes planos",
         );
-      detail = `<span class="formula">V = (θ / 360°) · 4πr³/3</span><p>A<sub>curva</sub> = (θ / 360°) · 4πr². Para 0° &lt; θ &lt; 360°, os dois semicírculos dos cortes somam πr². Em 360°, não há cortes.</p>`;
+      detail += `<p>Para 0° &lt; θ &lt; 360°, os dois semicírculos dos cortes somam πr². Em 360°, não há cortes.</p>`;
     } else {
       $("#solid-metrics").innerHTML =
         metric("Área total", fmt(m.area) + " u.a.") +
@@ -279,19 +313,19 @@ export function mountGeometry(ctx) {
             ? `${m.vertices} · ${m.edges} · ${m.faces}`
             : s.type === "esfera"
               ? "1 curva"
-              : s.type === "cone"
+              : s.type === "cone" && !truncated
                 ? "1 plana + 1 curva"
                 : "2 planas + 1 curva",
         );
       if (m.g)
-        detail += `<p>${s.type === "piramide" ? "Apótema lateral ℓ" : "Geratriz g"} = ${fmt(m.g)}. ${s.type === "cone" ? "g² = r² + h²." : s.type === "piramide" ? "ℓ² = h² + (a/2)²." : ""}</p>`;
+        detail += `<p>${s.type === "piramide" ? "Apótema lateral ℓ" : "Geratriz g"} = ${fmt(m.g)}. ${truncated ? (s.type === "cone" ? "g² = h² + (R − r)²." : "ℓ² = h² + ((a − b)/2)².") : s.type === "cone" ? "g² = r² + h²." : s.type === "piramide" ? "ℓ² = h² + (a/2)²." : ""}</p>`;
     }
     if (s.type === "piramide" && normal) {
       if (s.diagonal)
-        detail += `<p><strong>Diagonal:</strong> d = a√2 = ${fmt(s.a * Math.SQRT2)}.</p>`;
-      if (s.triangleApothem)
+        detail += `<p><strong>Diagonal:</strong> d = a√2 = ${fmt(s.a)}√2.</p>`;
+      if (!truncated && s.triangleApothem)
         detail += `<p class="blue-note"><strong>Triângulo do apótema:</strong> ℓ² = h² + (a/2)² = ${fmt(s.h * s.h)} + ${fmt((s.a / 2) ** 2)}; ℓ = ${fmt(Math.hypot(s.h, s.a / 2))}.</p>`;
-      if (s.triangleEdge)
+      if (!truncated && s.triangleEdge)
         detail += `<p class="purple-note"><strong>Triângulo da aresta:</strong> e² = h² + (d/2)² = ${fmt(s.h * s.h)} + ${fmt((s.a * s.a) / 2)}; e = ${fmt(Math.hypot(s.h, s.a / Math.SQRT2))}.</p>`;
     }
     $("#solid-formulas").innerHTML = detail;
@@ -311,11 +345,13 @@ function renderScene(s, svg, fmt) {
     frame = faces.flatMap((f) => f.points),
     annotations = [];
   const curved = ["cilindro", "cone", "esfera"].includes(s.type),
-    H = s.type === "cubo" ? s.a : s.h;
+    H = s.type === "cubo" ? s.a : s.h,
+    truncated = isFrustum(s);
   // Use a stable framing across the complete unfolding sequence.
   if (s.view === "net") {
-    let open =
-      s.type === "piramide"
+    let open = truncated
+      ? frustumNet(s.type, s.a, s.top, s.h, 1)
+      : s.type === "piramide"
         ? pyramidNet(s.a, s.h, 1)
         : s.type === "cilindro"
           ? cylinderNet(s.a, s.h, 1)
@@ -336,7 +372,7 @@ function renderScene(s, svg, fmt) {
   const tri = (points, color) =>
     annotations.push({ kind: "triangle", points, color });
   if (s.view === "revolution") {
-    const profile = revolutionProfile(s.type, s.a, s.h),
+    const profile = revolutionProfile(s.type, s.a, s.h, truncated ? s.top : 0),
       points = profile.map((p) =>
         revolvePoint(p, (s.revolution * Math.PI) / 180, s.axis),
       );
@@ -356,6 +392,22 @@ function renderScene(s, svg, fmt) {
     );
   }
   if (s.view === "solid" && s.measure) {
+    if (truncated) {
+      if (s.type === "cone")
+        line(
+          [0, s.h / 2, 0],
+          [s.top, s.h / 2, 0],
+          `r = ${fmt(s.top)}`,
+          "#285d85",
+        );
+      else
+        line(
+          [-s.top / 2, s.h / 2, s.top / 2],
+          [s.top / 2, s.h / 2, s.top / 2],
+          `b = ${fmt(s.top)}`,
+          "#285d85",
+        );
+    }
     if (!curved) {
       let y = -H / 2,
         z = (s.type === "prisma" ? s.b : s.a) / 2;
@@ -377,7 +429,11 @@ function renderScene(s, svg, fmt) {
         );
       if (
         s.type !== "cubo" &&
-        !(s.type === "piramide" && (s.triangleApothem || s.triangleEdge))
+        !(
+          s.type === "piramide" &&
+          !truncated &&
+          (s.triangleApothem || s.triangleEdge)
+        )
       )
         line([0, -H / 2, 0], [0, H / 2, 0], `h = ${fmt(H)}`, "#7452a1", true);
     } else if (s.type === "esfera") {
@@ -391,7 +447,11 @@ function renderScene(s, svg, fmt) {
           true,
         );
     } else {
-      line([0, -s.h / 2, 0], [s.a, -s.h / 2, 0], `r = ${fmt(s.a)}`);
+      line(
+        [0, -s.h / 2, 0],
+        [s.a, -s.h / 2, 0],
+        `${truncated ? "R" : "r"} = ${fmt(s.a)}`,
+      );
       line(
         [0, -s.h / 2, 0],
         [0, s.h / 2, 0],
@@ -404,16 +464,23 @@ function renderScene(s, svg, fmt) {
   if (
     s.view === "solid" &&
     s.guide &&
-    !(s.type === "piramide" && s.triangleApothem) &&
+    !(s.type === "piramide" && !truncated && s.triangleApothem) &&
     ["piramide", "cone", "cilindro"].includes(s.type)
   ) {
     const p =
         s.type === "piramide" ? [0, -s.h / 2, s.a / 2] : [s.a, -s.h / 2, 0],
-      q = s.type === "cilindro" ? [s.a, s.h / 2, 0] : [0, s.h / 2, 0];
+      q =
+        s.type === "cilindro"
+          ? [s.a, s.h / 2, 0]
+          : truncated
+            ? s.type === "cone"
+              ? [s.top, s.h / 2, 0]
+              : [0, s.h / 2, s.top / 2]
+            : [0, s.h / 2, 0];
     line(
       p,
       q,
-      `${s.type === "piramide" ? "ℓ" : "g"} = ${fmt(s.type === "cilindro" ? s.h : Math.hypot(s.h, s.type === "piramide" ? s.a / 2 : s.a))}`,
+      `${s.type === "piramide" ? "ℓ" : "g"} = ${fmt(s.type === "cilindro" ? s.h : Math.hypot(s.h, s.type === "piramide" ? (s.a - (truncated ? s.top : 0)) / 2 : s.a - (truncated ? s.top : 0)))}`,
     );
   }
   if (s.type === "piramide" && s.view === "solid") {
@@ -425,7 +492,7 @@ function renderScene(s, svg, fmt) {
       line(
         [-s.a / 2, -s.h / 2, -s.a / 2],
         C,
-        `d = ${fmt(s.a * Math.SQRT2)}`,
+        `d = ${fmt(s.a)}√2`,
         "#a0593a",
         true,
         -110,
@@ -435,7 +502,7 @@ function renderScene(s, svg, fmt) {
       [s.triangleApothem, M, "#246d9c", "ℓ"],
       [s.triangleEdge, C, "#8551a4", "e"],
     ])
-      if (enabled) {
+      if (enabled && !truncated) {
         tri([O, P, S], color);
         if (label === "ℓ" || !s.triangleApothem)
           line(O, S, `h = ${fmt(s.h)}`, color, false, -53, -10);

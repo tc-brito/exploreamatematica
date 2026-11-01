@@ -72,13 +72,13 @@ npm test
 
 A geração usa esbuild 0.28.2 pelo npm e pode precisar de internet na primeira execução. O site pronto não depende de serviços externos.
 
-Os 38 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
+Os 45 grupos de testes verificam cálculos, distribuições, planificações, conservação de áreas, calota e cunha, sólidos de revolução, domínios, períodos, expressões livres e SVG. Os fluxos principais também foram conferidos no navegador, incluindo comparações digitadas, cinco campos, cores, zoom por scroll, coordenadas, tipografia e exportação PNG.
 
 ## Estrutura
 
 - `index.html`: página de entrada, funciona também por abertura local.
 - `assets/app.js`: navegação e laboratórios de estatística/probabilidade.
-- `assets/geometry-model.js`: geometrias e cálculos de partes da esfera.
+- `assets/geometry-model.js`: geometrias, troncos e cálculos de partes da esfera.
 - `assets/geometry-lab.js`: controles e renderização dos sólidos.
 - `assets/function-math.js`: famílias e analisador de expressões.
 - `assets/functions-lab.js`: interface de funções e editor livre.
@@ -100,3 +100,12 @@ Os 38 grupos de testes verificam cálculos, distribuições, planificações, co
 - As curvas são amostradas numericamente e refinadas perto de variações rápidas; a figura é um modelo visual, não uma demonstração. Para funções muito oscilatórias, ajuste a janela.
 - O estado permanece ao navegar entre laboratórios na mesma aba. Recarregar reinicia a sessão; o botão Compartilhar inclui os parâmetros no link. Um link `file://` só é útil no mesmo computador; após a publicação, o compartilhamento usa o endereço público.
 - Fontes DM Sans e Manrope locais, com licenças SIL OFL na pasta `assets`. Sem analytics, contas ou chamadas a APIs durante as explorações.
+
+## Revisão de gráficos e troncos
+
+- Comparações aceitam Enter; a seção de propriedades e tabela foi removida das famílias.
+- Gráficos para avaliações iniciam em 15 × 10 cm. Controles de posição movem os nomes dos eixos e os rótulos dos pontos; os ajustes persistem no compartilhamento e na exportação.
+- Gráficos permitem arraste, zoom por roda e pinça com dois ponteiros. A transição de dois para um toque preserva a janela sem saltos.
+- Dimensões principais dos sólidos chegam a 20. Cone e pirâmide oferecem troncos com base menor ajustável, planificação dinâmica e métricas próprias; o cone também admite revolução de um trapézio.
+- Fórmulas de área e volume são linhas MathML separadas. A diagonal da base quadrada mantém a forma exata a√2.
+- Testes automatizados cobrem gestos de dois ponteiros. A inspeção visual cobre navegador e largura de celular; não substitui um teste de toque em aparelho físico.

@@ -61,6 +61,8 @@ export function defaultGeometry() {
     a: 4,
     h: 6,
     b: 3,
+    frustum: false,
+    top: 2,
     faces: true,
     edges: true,
     vertices: false,
@@ -290,7 +292,7 @@ export function sphericalCap(r, h, N = 64, rows = 26) {
     );
   return out;
 }
-export function revolutionProfile(type, r, h) {
+export function revolutionProfile(type, r, h, top = 0) {
   if (type === "cilindro")
     return [
       [0, -h / 2, 0],
@@ -302,6 +304,7 @@ export function revolutionProfile(type, r, h) {
     return [
       [0, -h / 2, 0],
       [r, -h / 2, 0],
+      ...(top > 0 ? [[top, h / 2, 0]] : []),
       [0, h / 2, 0],
     ];
   return Array.from({ length: 49 }, (_, j) => {
@@ -313,10 +316,10 @@ export const revolvePoint = ([x, y], phi, axis = "y") =>
   axis === "y"
     ? [x * Math.cos(phi), y, x * Math.sin(phi)]
     : [y, x * Math.cos(phi), x * Math.sin(phi)];
-export function revolutionMesh(type, r, h, degrees, axis = "y") {
+export function revolutionMesh(type, r, h, degrees, axis = "y", top = 0) {
   const angle = (degrees * Math.PI) / 180,
     steps = Math.max(1, Math.ceil(degrees / 5)),
-    profile = revolutionProfile(type, r, h),
+    profile = revolutionProfile(type, r, h, top),
     out = [];
   if (degrees <= 0) return [];
   for (let j = 0; j < profile.length; j++) {
@@ -363,10 +366,12 @@ export function solidScene(s) {
     a = s.a,
     h = s.type === "cubo" ? a : s.h,
     b = s.type === "cubo" ? a : s.b;
+  const truncated = isFrustum(s);
   if (s.view === "net") {
     const t = s.opening / 100;
-    faces =
-      s.type === "piramide"
+    faces = truncated
+      ? frustumNet(s.type, a, s.top, h, t)
+      : s.type === "piramide"
         ? pyramidNet(a, h, t)
         : s.type === "cilindro"
           ? cylinderNet(a, h, t)
@@ -374,11 +379,19 @@ export function solidScene(s) {
             ? coneNet(a, h, t)
             : cuboidNet(a, h, b, t);
   } else if (s.view === "revolution")
-    faces = revolutionMesh(s.type, a, h, s.revolution, s.axis);
+    faces = revolutionMesh(
+      s.type,
+      a,
+      h,
+      s.revolution,
+      s.axis,
+      truncated ? s.top : 0,
+    );
   else if (s.type === "esfera" && s.part === "cap")
     faces = sphericalCap(a, s.capHeight);
   else if (s.type === "esfera" && s.part === "wedge")
     faces = revolutionMesh("esfera", a, h, s.wedge);
+  else if (truncated) faces = frustumMesh(s.type, a, s.top, h);
   else {
     let m = mesh(s.type, a, h, b);
     faces = m.faces.map((f, i) =>
@@ -399,7 +412,7 @@ export function solidScene(s) {
           ? scale(c, 1.8 / (norm(c) || 1))
           : i === 0
             ? [0, -1.8, 0]
-            : s.type === "cilindro" && i === 1
+            : (s.type === "cilindro" || truncated) && i === 1
               ? [0, 1.8, 0]
               : [0, 0.3, 0];
       return { ...f, points: f.points.map((p) => add(p, offset)) };
@@ -435,9 +448,10 @@ export function sanitizeGeometry(raw) {
     s.view = "solid";
   if (!["whole", "cap", "wedge"].includes(s.part)) s.part = "whole";
   if (!["x", "y"].includes(s.axis)) s.axis = "y";
-  clamp("a", 0.5, 10);
-  clamp("h", 0.5, 12);
-  clamp("b", 0.5, 10);
+  clamp("a", 0.5, 20);
+  clamp("h", 0.5, 20);
+  clamp("b", 0.5, 20);
+  clamp("top", 0.1, s.a);
   clamp("opening", 0, 100);
   clamp("revolution", 0, 360);
   clamp("capHeight", 0.05, 2 * s.a);
@@ -446,4 +460,133 @@ export function sanitizeGeometry(raw) {
   clamp("rx", -Math.PI, Math.PI);
   clamp("ry", -100, 100);
   return s;
+}
+
+export const isFrustum = (s) =>
+  s.frustum && ["cone", "piramide"].includes(s.type);
+export function frustumMetrics(type, a, b, h) {
+  const cone = type === "cone",
+    g = Math.hypot(h, (a - b) / (cone ? 1 : 2));
+  return {
+    area: cone
+      ? Math.PI * (a * a + b * b + (a + b) * g)
+      : a * a + b * b + 2 * (a + b) * g,
+    volume: ((cone ? Math.PI : 1) * h * (a * a + a * b + b * b)) / 3,
+    g,
+    vertices: cone ? null : 8,
+    edges: cone ? null : 12,
+    faces: cone ? 3 : 6,
+  };
+}
+export function frustumMesh(type, a, b, h, N = 96) {
+  const ring = (r, y) =>
+    type === "piramide"
+      ? [
+          [-r / 2, y, -r / 2],
+          [r / 2, y, -r / 2],
+          [r / 2, y, r / 2],
+          [-r / 2, y, r / 2],
+        ]
+      : Array.from({ length: N }, (_, i) => [
+          r * Math.cos((2 * Math.PI * i) / N),
+          y,
+          r * Math.sin((2 * Math.PI * i) / N),
+        ]);
+  const lower = ring(a, -h / 2),
+    upper = ring(b, h / 2),
+    n = lower.length;
+  return [
+    face(lower, 0),
+    face(upper, 1),
+    ...lower.map((p, i) =>
+      face([p, lower[(i + 1) % n], upper[(i + 1) % n], upper[i]], i + 2, {
+        smooth: type === "cone",
+      }),
+    ),
+  ];
+}
+export function frustumNet(type, a, b, h, t, N = 96) {
+  if (type === "piramide") {
+    const g = Math.hypot(h, (a - b) / 2),
+      start = Math.atan2(h, (a - b) / 2),
+      theta = start + (Math.PI - start) * t;
+    const north = (u, v) => [
+        u,
+        v * Math.sin(theta),
+        -a / 2 + v * Math.cos(theta),
+      ],
+      south = (u, v) => [u, v * Math.sin(theta), a / 2 - v * Math.cos(theta)],
+      west = (u, v) => [-a / 2 + v * Math.cos(theta), v * Math.sin(theta), u],
+      east = (u, v) => [a / 2 - v * Math.cos(theta), v * Math.sin(theta), u];
+    const panel = (fn) => [
+      fn(-a / 2, 0),
+      fn(a / 2, 0),
+      fn(b / 2, g),
+      fn(-b / 2, g),
+    ];
+    const top = (u, v) => [
+      u,
+      g * Math.sin(theta) + v * Math.sin(Math.PI * t),
+      -a / 2 + g * Math.cos(theta) + v * Math.cos(Math.PI * t),
+    ];
+    return [
+      face(
+        [
+          [-a / 2, 0, -a / 2],
+          [a / 2, 0, -a / 2],
+          [a / 2, 0, a / 2],
+          [-a / 2, 0, a / 2],
+        ],
+        0,
+      ),
+      ...[north, east, south, west].map((fn, i) => face(panel(fn), i + 1)),
+      face([top(-b / 2, 0), top(b / 2, 0), top(b / 2, b), top(-b / 2, b)], 5),
+    ];
+  }
+  if (Math.abs(a - b) < 1e-6) return cylinderNet(a, h, t, N);
+  const g = Math.hypot(h, a - b),
+    L = (g * a) / (a - b),
+    l = (g * b) / (a - b),
+    alpha = Math.asin((a - b) / g),
+    beta = alpha + (Math.PI / 2 - alpha) * t,
+    phi = (2 * Math.PI * Math.sin(alpha)) / Math.sin(beta);
+  const point = (v, i) => [
+    v * Math.sin(beta) * Math.sin(-phi / 2 + (phi * i) / N),
+    (L - v) * Math.cos(beta),
+    v * Math.sin(beta) * Math.cos(-phi / 2 + (phi * i) / N),
+  ];
+  const out = Array.from({ length: N }, (_, i) =>
+    face([point(L, i), point(L, i + 1), point(l, i + 1), point(l, i)], 2, {
+      smooth: true,
+    }),
+  );
+  const q = Math.PI * t;
+  out.push(
+    face(
+      Array.from({ length: N }, (_, i) => {
+        const angle = (2 * Math.PI * i) / N,
+          z = a * (Math.cos(angle) - 1);
+        return [
+          a * Math.sin(angle),
+          -z * Math.sin(q),
+          L * Math.sin(beta) + z * Math.cos(q),
+        ];
+      }),
+      0,
+    ),
+  );
+  out.push(
+    face(
+      Array.from({ length: N }, (_, i) => {
+        const angle = (2 * Math.PI * i) / N;
+        return [
+          b * Math.sin(angle),
+          (L - l) * Math.cos(beta),
+          l * Math.sin(beta) + b * (Math.cos(angle) - 1),
+        ];
+      }),
+      1,
+    ),
+  );
+  return out;
 }

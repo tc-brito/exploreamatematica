@@ -53,46 +53,6 @@ export function expressionCurve(q, parameters = {}) {
   if (min >= max) throw Error("O início do domínio deve ser menor que o fim.");
   return (x) => (x < min || x > max ? NaN : fn(x));
 }
-function algebraDetails(c) {
-  const v = decimal,
-    within = (x) => !c.domain || (x >= c.min && x <= c.max);
-  let text = "";
-  if (familyError(c)) return "";
-  if (c.type === "afim") {
-    const root = c.a
-      ? within(-c.b / c.a)
-        ? v(-c.b / c.a)
-        : "fora do intervalo escolhido"
-      : c.b === 0
-        ? "todo x do domínio"
-        : "nenhuma";
-    text = `<p><strong>Inclinação:</strong> ${v(c.a)}. <strong>Intercepto:</strong> (0; ${v(c.b)}). <strong>Raiz:</strong> ${root}. ${c.a > 0 ? "Crescente" : c.a < 0 ? "Decrescente" : "Constante"}.</p>`;
-  }
-  if (c.type === "quadratica") {
-    if (!c.a)
-      text =
-        "<p>Com a = 0, a expressão se reduz a uma função afim ou constante.</p>";
-    else {
-      const D = c.b * c.b - 4 * c.a * c.c,
-        vx = -c.b / (2 * c.a),
-        vy = -D / (4 * c.a),
-        roots =
-          D < 0
-            ? []
-            : [
-                (-c.b - Math.sqrt(D)) / (2 * c.a),
-                (-c.b + Math.sqrt(D)) / (2 * c.a),
-              ].filter(within);
-      text = `<p><strong>Discriminante:</strong> Δ = b² − 4ac = ${v(D)}. <strong>Raízes no domínio:</strong> ${roots.length ? [...new Set(roots.map((x) => v(x)))].join(" e ") : "nenhuma"}.</p><p><strong>Vértice da parábola:</strong> (${v(vx)}; ${v(vy)}). Concavidade para ${c.a > 0 ? "cima" : "baixo"}${within(vx) ? "; ponto de " + (c.a > 0 ? "mínimo" : "máximo") : "; vértice fora do intervalo escolhido"}.</p>`;
-    }
-  }
-  if (c.type === "exponencial")
-    text = `<p><strong>Intercepto:</strong> (0; ${v(c.a + c.c)}). ${!c.a || c.b === 1 ? "Esta configuração produz uma constante." : `Assíntota horizontal da curva completa: y = ${v(c.c)}. Função ${c.a * Math.log(c.b) > 0 ? "crescente" : "decrescente"}.`}</p><button id="explore-logistic" class="text-button">Estudar crescimento logístico →</button>`;
-  if (c.type === "modular")
-    text = `<p><strong>Ponto de mudança:</strong> (${v(c.b)}; ${v(c.c)}). ${!c.a ? "Função constante." : c.a > 0 ? "A curva completa tem mínimo em x = b." : "A curva completa tem máximo em x = b."}</p>`;
-  return text;
-}
-
 export function mountFunctions(ctx) {
   const { $, select, check, shell, common, render, state, toast } = ctx,
     s = state.functions,
@@ -128,15 +88,11 @@ export function mountFunctions(ctx) {
       .join(
         "",
       )}</div><div class="plot-zoom"><button id="graph-minus" aria-label="Reduzir zoom do gráfico">−</button><button id="graph-reset" aria-label="Restaurar janela do gráfico">↺</button><button id="graph-plus" aria-label="Ampliar zoom do gráfico">+</button></div><div id="color-palette" class="plot-palette" hidden role="group" aria-label="Escolha uma cor">${PALETTE.map(([color, label]) => `<button data-palette-color="${color}" style="--swatch:${color}" aria-label="${label}" title="${label}"><i></i></button>`).join("")}<button id="close-palette" aria-label="Fechar cores">×</button></div></div>
- <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gráfico de funções"></svg><span class="graph-gesture">Arraste para mover · Role para dar zoom · Ímã nas interseções</span></div><div class="export-toolbar"><button id="export-svg">↓ SVG vetorial</button><button id="export-png">↓ PNG</button></div>`,
+ <div class="graph-summary" id="graph-summary"></div><div class="stage graph-stage ${free ? "exam-stage" : ""}"><svg id="function-graph" role="img" tabindex="0" aria-label="Gráfico de funções"></svg><span class="graph-gesture">Arraste para mover · Role ou faça pinça para dar zoom · Ímã nas interseções</span></div><div class="export-toolbar"><button id="export-svg">↓ SVG vetorial</button><button id="export-png">↓ PNG</button></div>`,
     nav,
   );
   $(".lab").classList.add("function-lab");
   $("#lab-controls").classList.add("extended-controls", "function-controls");
-  $(".workspace").insertAdjacentHTML(
-    "afterend",
-    `<details class="function-notes" ${free ? "hidden" : ""}><summary>Propriedades da função e tabela de valores</summary><div id="function-details"></div></details>`,
-  );
   $("#mode-families").onclick = () => {
     s.mode = "families";
     render();
@@ -170,10 +126,10 @@ export function mountFunctions(ctx) {
             c.trig,
           )
         : ""
-    }<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">▶</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar animações</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Domínio da função principal</summary><p id="natural-domain" class="small"></p>${check("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "Início", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras funções</h2><p class="small">Digite até 5 expressões. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar funções</button></div><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(s)}</details>${specialControls()}<div id="point-list">${pointList()}</div>`;
+    }<div class="main-equation"><span class="symbolic-formula">${familyMathML(c)}</span>${check("main-visible", "Mostrar", c.visible)}</div><div class="parameters">${PARAMS[c.type].map(([k, l, min, max, step]) => `<div class="parameter"><label for="coef-${k}"><b>${k}</b><span>${l}</span></label><div class="parameter-values"><input type="range" id="coef-${k}" min="${Math.min(min, c[k])}" max="${Math.max(max, c[k])}" step="${step}" value="${c[k]}" aria-label="Coeficiente ${k}"><input type="number" id="value-${k}" step="any" value="${Number(c[k].toFixed(4))}" aria-label="Valor de ${k}"><button id="play-${k}" aria-label="Animar coeficiente ${k}" aria-pressed="false">▶</button></div></div>`).join("")}</div><button id="stop-animation" class="text-button compact-pause">Pausar animações</button><p class="small error" id="family-error" role="status"></p><details class="control-section main-domain"><summary>Domínio da função principal</summary><p id="natural-domain" class="small"></p>${check("limit-domain", "Limitar intervalo", c.domain)}<div id="main-domain-fields" class="field-grid" ${c.domain ? "" : "hidden"}>${numeric("domain-min", "Início", c.min)}${numeric("domain-max", "Fim", c.max)}</div></details><div class="control-section comparisons"><h2>Comparar com outras funções</h2><p class="small">Digite até 5 expressões. Use a, b, c e d para acompanhar os coeficientes.</p>${equationRows()}<button id="clear-functions" class="wide-button">Limpar funções</button></div><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(s)}</details>${axisPositions()}${specialControls()}<div id="point-list">${pointList()}</div>`;
   }
   function assessmentControls() {
-    return `<div class="control-title">Gráfico para avaliações</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as funções</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para π. Domínio vazio mantém o domínio natural.</p></details><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Automático · ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Automático · ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select(
+    return `<div class="control-title">Gráfico para avaliações</div>${equationRows()}<details class="syntax-help"><summary>Como escrever as funções</summary><p class="small">Use x^2, 2x, sen(x), cos(x), tan(x), sqrt(x), ln(x), log(x) e |x|. Use pi para π. Domínio vazio mantém o domínio natural.</p></details><details class="control-section"><summary>Janela do gráfico</summary>${viewportFields(f)}</details><details class="control-section"><summary>Eixos e tipografia</summary><div class="field-grid">${field("xlabel", "Nome do eixo x", f.xlabel, 'maxlength="30"')}${field("ylabel", "Nome do eixo y", f.ylabel, 'maxlength="30"')}</div>${axisPositions()}${field("x-step", "Passo do eixo x", f.xstep, 'placeholder="Automático · ex.: 1 ou pi/2"')}${field("y-step", "Passo do eixo y", f.ystep, 'placeholder="Automático · ex.: 1 ou 0,5"')}<p id="step-error" class="small error" role="status"></p>${select(
       "tick-mode",
       "Valores nos eixos",
       [
@@ -195,8 +151,51 @@ export function mountFunctions(ctx) {
       "intersections",
     )}<button id="find-special" class="wide-button">Localizar na janela atual</button><p class="small">Fixe pontos para incluí-los no SVG e no PNG. As coordenadas fixadas permanecem mesmo ao modificar a função.</p><div id="special-results" aria-live="polite"></div></details>`;
   }
+  function positionButtons(target, label) {
+    return `<div class="label-position" role="group" aria-label="Posição de ${xml(label)}"><span>${xml(label)}</span><div>${[
+      ["left", "M19 12H5m6-6-6 6 6 6", "esquerda"],
+      ["up", "M12 19V5m-6 6 6-6 6 6", "cima"],
+      ["down", "M12 5v14m-6-6 6 6 6-6", "baixo"],
+      ["right", "M5 12h14m-6-6 6 6-6 6", "direita"],
+      ["reset", "M5 9a7 7 0 1 1 0 6M5 4v5h5", "posição inicial"],
+    ]
+      .map(
+        ([dir, icon, text]) =>
+          `<button type="button" data-label-target="${target}" data-label-dir="${dir}" aria-label="Mover ${xml(label)} para ${text}" title="${text}"><svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${icon}"/></svg></button>`,
+      )
+      .join("")}</div></div>`;
+  }
+  function axisPositions() {
+    return `<details class="text-positions"><summary>Posição dos nomes dos eixos</summary>${positionButtons("x", "nome do eixo x")}${positionButtons("y", "nome do eixo y")}<p class="small">As setas movem apenas o texto. O botão de restaurar retorna à posição inicial.</p></details>`;
+  }
+  function bindPositions() {
+    document.querySelectorAll("[data-label-target]").forEach(
+      (el) =>
+        (el.onclick = () => {
+          const target = el.dataset.labelTarget,
+            dir = el.dataset.labelDir;
+          const isPoint = target.startsWith("point-");
+          const obj = isPoint ? pinned[Number(target.slice(6))] : windowState;
+          const prefix = isPoint ? "label" : target + "label";
+          if (!obj) return;
+          for (const [suffix, delta] of [
+            ["Dx", dir === "left" ? -4 : dir === "right" ? 4 : 0],
+            ["Dy", dir === "up" ? -4 : dir === "down" ? 4 : 0],
+          ])
+            obj[prefix + suffix] =
+              dir === "reset"
+                ? 0
+                : Math.max(
+                    -200,
+                    Math.min(200, (obj[prefix + suffix] || 0) + delta),
+                  );
+          draw();
+        }),
+    );
+  }
   function refreshPoints() {
     $("#point-list").innerHTML = pointList();
+    bindPositions();
     if ($("#add-point")) $("#add-point").disabled = pinned.length >= 12;
     document.querySelectorAll("[data-remove-point]").forEach(
       (el) =>
@@ -211,7 +210,7 @@ export function mountFunctions(ctx) {
     return pinned
       .map(
         (p, i) =>
-          `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">×</button></div>`,
+          `<div class="point-row"><span>${xml(p.label || "P" + (i + 1))}: (${decimal(p.x)}; ${decimal(p.y)})</span><button data-remove-point="${i}" aria-label="Remover ponto ${i + 1}">×</button></div>${positionButtons("point-" + i, "texto de " + (p.label || "P" + (i + 1)))}`,
       )
       .join("");
   }
@@ -329,10 +328,6 @@ export function mountFunctions(ctx) {
         summary += ` · Amplitude = |b| = ${decimal(Math.abs(c.b))}`;
       $("#graph-summary").innerHTML =
         c.type === "trigonometrica" ? trigSummaryMathML(c) : xml(summary);
-      $("#function-details").innerHTML =
-        `<p>Domínio: ${xml(naturalDomain(c))}${c.domain ? ` ∩ [${decimal(c.min)}; ${decimal(c.max)}]` : ""}.</p>${algebraDetails(c)}${c.type === "logistica" ? "<p>Crescimento logístico: para b ≠ 0, os patamares da curva completa são y = d e y = a + d.</p>" : ""}${c.type === "trigonometrica" ? "<p>As linhas tracejadas mostram os extremos no domínio escolhido (seno e cosseno) ou as assíntotas (tangente). Os ângulos estão em radianos.</p>" : ""}<div class="table-scroll"><table class="data-table"><thead><tr><th>x</th>${[-2, -1, 0, 1, 2].map((x) => `<th>${x}</th>`).join("")}</tr></thead><tbody><tr><th>f(x)</th>${[-2, -1, 0, 1, 2].map((x) => `<td>${decimal(familyValue(c, x))}</td>`).join("")}</tr></tbody></table></div>`;
-      if ($("#explore-logistic"))
-        $("#explore-logistic").onclick = () => changeFamily("logistica");
     }
     drawGraph($("#function-graph"), options);
     $("#function-graph").setAttribute(
@@ -407,6 +402,14 @@ export function mountFunctions(ctx) {
     $("#expression-" + i).oninput = (e) => {
       q.expression = e.target.value;
       draw();
+    };
+    $("#expression-" + i).onkeydown = (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      q.expression = e.target.value;
+      draw();
+      if (!$("#expression-error-" + i).textContent && q.expression.trim())
+        toast("Função aplicada ao gráfico.");
     };
     $("#visible-" + i).onchange = (e) => {
       q.visible = e.target.checked;

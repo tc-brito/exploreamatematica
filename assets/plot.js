@@ -1,4 +1,10 @@
-import { cmToPixels, pngWithDpi, zoomWindow, panWindow } from "./plot-utils.js";
+import {
+  cmToPixels,
+  pngWithDpi,
+  zoomWindow,
+  panWindow,
+  gestureWindow,
+} from "./plot-utils.js";
 import { findIntersections } from "./graph-analysis.js";
 import { piLabel } from "./function-math.js";
 export const xml = (s) =>
@@ -333,7 +339,7 @@ export function buildGraph(o) {
       font,
       (yAxis - 18) / Math.max(1, (o.ylabel || "").length * 0.52),
     );
-  html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset}" y="${xAxis + font + 9}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12}" y="${top - 10}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
+  html += `<text class="axis-name axis-name-x" x="${w - right + g.xNameOffset + (o.xlabelDx || 0)}" y="${xAxis + font + 9 + (o.xlabelDy || 0)}" text-anchor="start" font-size="${xNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.xlabel || "")}</text><text class="axis-name axis-name-y" x="${yAxis - 12 + (o.ylabelDx || 0)}" y="${top - 10 + (o.ylabelDy || 0)}" text-anchor="end" font-size="${yNameSize}" font-style="normal" font-weight="${o.axesBold ? 700 : 400}">${xml(o.ylabel || "")}</text><g clip-path="url(#${id})" mask="url(#label-mask)">`;
   for (const guide of o.guides || []) {
     if (guide.axis === "x" && guide.value >= o.xmin && guide.value <= o.xmax) {
       let x = X(guide.value);
@@ -379,7 +385,12 @@ export function buildGraph(o) {
         )
       );
     };
-    const c = candidates.find(valid) || candidates[0],
+    const base = candidates.find(valid) || candidates[0],
+      c = {
+        ...base,
+        x: base.x + (p.labelDx || 0),
+        y: base.y + (p.labelDy || 0),
+      },
       l = c.anchor === "end" ? c.x - lw : c.x;
     occupied.push({ l, r: l + lw, t: c.y - font, b: c.y });
     html += `<g class="fixed-point"><circle cx="${x}" cy="${y}" r="3.5" fill="${ink}"/><text x="${c.x}" y="${c.y}" text-anchor="${c.anchor}" font-weight="700" font-style="${p.label ? "italic" : "normal"}">${xml(label)}</text></g>`;
@@ -576,57 +587,73 @@ export function attachGraphZoom(element, getOptions, apply) {
 }
 
 export function attachGraphPan(element, getOptions, apply) {
-  let drag = null;
-  const down = (e) => {
-    if (e.button !== 0 || drag) return;
+  const pointers = new Map();
+  let gesture = null;
+  const reset = () => {
+    if (!pointers.size) {
+      gesture = null;
+      delete element.dataset.dragging;
+      return;
+    }
     const matrix = element.getScreenCTM();
     if (!matrix) return;
-    const inverse = matrix.inverse(),
-      p = new DOMPoint(e.clientX, e.clientY).matrixTransform(inverse);
+    const inverse = matrix.inverse();
+    const positions = [...pointers.values()]
+      .slice(0, 2)
+      .map((p) => new DOMPoint(p.x, p.y).matrixTransform(inverse));
     const o = getOptions();
-    drag = {
-      id: e.pointerId,
-      p,
+    gesture = {
       inverse,
+      positions,
       view: { xmin: o.xmin, xmax: o.xmax, ymin: o.ymin, ymax: o.ymax },
       geometry: graphGeometry(o),
     };
     element.dataset.dragging = "true";
+  };
+  const down = (e) => {
+    if (e.button !== 0 || pointers.size >= 2) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    reset();
     element.setPointerCapture(e.pointerId);
     e.preventDefault();
     const trace = element.querySelector("#graph-trace");
     if (trace) trace.innerHTML = "";
   };
   const move = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(drag.inverse),
-      v = drag.view,
-      g = drag.geometry;
+    if (!gesture || !pointers.has(e.pointerId)) return;
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const current = [...pointers.values()]
+      .slice(0, 2)
+      .map((p) => new DOMPoint(p.x, p.y).matrixTransform(gesture.inverse));
     apply(
-      panWindow(
-        v,
-        (-(p.x - drag.p.x) * (v.xmax - v.xmin)) / g.W,
-        ((p.y - drag.p.y) * (v.ymax - v.ymin)) / g.H,
-      ),
+      gestureWindow(gesture.view, gesture.geometry, gesture.positions, current),
     );
+    e.preventDefault();
   };
   const up = (e) => {
-    if (!drag || e.pointerId !== drag.id) return;
-    const id = drag.id;
-    drag = null;
-    delete element.dataset.dragging;
-    if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+    if (!pointers.delete(e.pointerId)) return;
+    reset();
+    if (element.hasPointerCapture(e.pointerId))
+      element.releasePointerCapture(e.pointerId);
   };
-  element.addEventListener("pointerdown", down);
-  element.addEventListener("pointermove", move);
-  element.addEventListener("pointerup", up);
-  element.addEventListener("pointercancel", up);
-  element.addEventListener("lostpointercapture", up);
+  for (const [type, fn] of [
+    ["pointerdown", down],
+    ["pointermove", move],
+    ["pointerup", up],
+    ["pointercancel", up],
+    ["lostpointercapture", up],
+  ])
+    element.addEventListener(type, fn);
   return () => {
-    element.removeEventListener("pointerdown", down);
-    element.removeEventListener("pointermove", move);
-    element.removeEventListener("pointerup", up);
-    element.removeEventListener("pointercancel", up);
-    element.removeEventListener("lostpointercapture", up);
+    pointers.clear();
+    delete element.dataset.dragging;
+    for (const [type, fn] of [
+      ["pointerdown", down],
+      ["pointermove", move],
+      ["pointerup", up],
+      ["pointercancel", up],
+      ["lostpointercapture", up],
+    ])
+      element.removeEventListener(type, fn);
   };
 }

@@ -81,7 +81,7 @@ test("Frações em radianos são vetoriais e o período usa frações MathML", (
   assert.doesNotMatch(trigSummaryMathML(c), /<mfrac>/);
 });
 test("Links restauram pontos fixados dos dois modos e preferências editoriais", () => {
-  const p = { x: 1, y: 5, label: "B", project: true };
+  const p = { x: 1, y: 5, label: "B", project: true, labelDx: 0, labelDy: 0 };
   const s = sanitizeFunctions({
     points: [p],
     free: { points: [p], tickMode: "points", showOrigin: false },

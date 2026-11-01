@@ -201,6 +201,13 @@ function lessonPlan() {
         "Dobrar o raio quadruplica a área e multiplica o volume por 8. A superfície esférica não pode ser planificada sem deformação.",
       ],
     };
+    if (state.geometry.frustum && ["cone", "piramide"].includes(type))
+      lessons[type] = [
+        "Um tronco como diferença de sólidos",
+        "Se a medida da base menor for metade da maior, a parte retirada tem metade do volume do sólido original?",
+        "Configure a base maior com medida 4, a menor com medida 2 e a altura do tronco igual a 6. Reconstrua no papel o vértice retirado e identifique os sólidos semelhantes.",
+        "A razão entre comprimentos é 1/2; entre áreas, 1/4; entre volumes, 1/8. Neste exemplo, o sólido original tem altura 12 e a parte retirada, 6. O tronco conserva 7/8 do volume original. Sua altura não é a altura do sólido original.",
+      ];
     const [title, question, experiment, answer] = lessons[type];
     return {
       ...base,

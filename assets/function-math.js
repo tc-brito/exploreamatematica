@@ -108,8 +108,8 @@ export function defaultFunctions() {
       ymax: 8,
       width: 1000,
       height: 700,
-      widthCm: 14,
-      heightCm: 9,
+      widthCm: 15,
+      heightCm: 10,
       axesBold: false,
       showOrigin: false,
       tickMode: "regular",
@@ -544,6 +544,8 @@ export function sanitizeFunctions(raw) {
     ["a", "b", "c"].forEach((k) => (c[k] = finite(raw[k], c[k], -1000, 1000)));
     out.curves = [c];
   }
+  for (const k of ["xlabelDx", "xlabelDy", "ylabelDx", "ylabelDy"])
+    out[k] = finite(raw[k], 0, -200, 200);
   out.active = Math.round(finite(raw.active, 0, 0, out.curves.length - 1));
   if (Array.isArray(raw.points))
     out.points = raw.points
@@ -554,6 +556,8 @@ export function sanitizeFunctions(raw) {
         y: p.y,
         label: String(p.label || "").slice(0, 24),
         project: p.project !== false,
+        labelDx: finite(p.labelDx, 0, -200, 200),
+        labelDy: finite(p.labelDy, 0, -200, 200),
       }));
   out.mode = raw.mode === "free" ? "free" : "families";
   for (const k of ["xmin", "xmax", "ymin", "ymax"])
@@ -594,8 +598,10 @@ export function sanitizeFunctions(raw) {
           k === "width" ? 2000 : 1600,
         ),
       );
-    out.free.widthCm = finite(f.widthCm, 14, 6, 30);
-    out.free.heightCm = finite(f.heightCm, 9, 4, 25);
+    out.free.widthCm = finite(f.widthCm, 15, 6, 30);
+    out.free.heightCm = finite(f.heightCm, 10, 4, 25);
+    for (const k of ["xlabelDx", "xlabelDy", "ylabelDx", "ylabelDy"])
+      out.free[k] = finite(f[k], 0, -200, 200);
     out.free.axesBold = f.axesBold === true;
     out.free.showOrigin = f.showOrigin === true;
     out.free.tickMode = f.tickMode === "points" ? "points" : "regular";
@@ -622,6 +628,8 @@ export function sanitizeFunctions(raw) {
           y: finite(p.y, 0, -10000, 10000),
           label: String(p.label || "").slice(0, 24),
           project: p.project !== false,
+          labelDx: finite(p.labelDx, 0, -200, 200),
+          labelDy: finite(p.labelDy, 0, -200, 200),
         }));
     if (out.free.xmin >= out.free.xmax) {
       out.free.xmin = -5;

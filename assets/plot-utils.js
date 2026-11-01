@@ -86,3 +86,28 @@ export function panWindow(view, dx, dy) {
     ymax: view.ymax + dy,
   };
 }
+
+// Transform a gesture from its initial state, avoiding cumulative rounding drift.
+export function gestureWindow(view, geometry, start, current) {
+  const midpoint = (ps) => ({
+    x: ps.reduce((n, p) => n + p.x, 0) / ps.length,
+    y: ps.reduce((n, p) => n + p.y, 0) / ps.length,
+  });
+  const a = midpoint(start),
+    b = midpoint(current);
+  const distance = (ps) => Math.hypot(ps[1].x - ps[0].x, ps[1].y - ps[0].y);
+  const factor =
+    start.length === 2
+      ? Math.max(1, distance(start)) / Math.max(1, distance(current))
+      : 1;
+  const anchorX =
+    view.xmin + ((a.x - geometry.left) / geometry.W) * (view.xmax - view.xmin);
+  const anchorY =
+    view.ymax - ((a.y - geometry.top) / geometry.H) * (view.ymax - view.ymin);
+  const next = zoomWindow(view, factor, anchorX, anchorY);
+  return panWindow(
+    next,
+    (-(b.x - a.x) * (next.xmax - next.xmin)) / geometry.W,
+    ((b.y - a.y) * (next.ymax - next.ymin)) / geometry.H,
+  );
+}
